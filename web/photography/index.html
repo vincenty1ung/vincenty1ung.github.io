@@ -92,6 +92,7 @@
                                     class="hidden md:block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-black dark:bg-white"></span>
                         </a>
                     </li>
+                    <div id="app2"></div>
                 </ul>
             </div>
         </div>
@@ -362,6 +363,43 @@
 </script>
 <script src="dist/fade_in.js"></script>
 <script src="dist/menu.js"></script>
+<!-- 加载 cplayer 脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/cplayer/dist/cplayer.min.js"></script>
+<script>
+    let player = new cplayer({
+        element: document.getElementById('app2'),
+        //size:'12px',
+        dropDownMenuMode:'none',
+        playlist: [
+            {
+                src: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/music.mp3',
+                poster: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/cover.jpg',
+                name: '旅途愉快',
+                artist: '寸铁',
+                lyric: '',
+                sublyric: ''
+            }
+        ]
+    })
+    player.mode = 'singlecycle' //设置当前播放模式为列表循环
+    /*player.prototype.add163 = function add163(id) {
+        if (!id) throw new Error("Unable Property.");
+        return fetch("https://music.huaji8.top/?id=" + id).then(function(res){return res.json()}).then(function(data){
+            let obj = {
+                name: data.info.songs[0].name,
+                artist: data.info.songs[0].ar.map(function(ar){ return ar.name }).join(','),
+                poster: data.pic.url,
+                lyric: data.lyric.lyric,
+                sublyric: data.lyric.tlyric,
+                src: data.url.url,
+                album: data.info.songs[0].al.name
+            }
+            this.add(obj);
+            return obj;
+        }.bind(this))
+    }
+    player.add163(1456446169) //加入网易云id为 12345678 的歌曲*/
+</script>
 </body>
 
 </html>
