@@ -41,6 +41,12 @@
             plugins: [],
         }
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .transition-width {
+            transition: width 0.3s;
+        }
+    </style>
 </head>
 
 <body
@@ -92,7 +98,6 @@
                                     class="hidden md:block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-black dark:bg-white"></span>
                         </a>
                     </li>
-                    <div id="app2"></div>
                 </ul>
             </div>
         </div>
@@ -101,9 +106,12 @@
 <!-- Content -->
 <div class="container mx-auto">
     <h1 class="text-4xl pt-10 pb-8 font-bold">PORTFOLIO</h1>
+    <div id="app2"></div>
+    <!-- Sidebar -->
+    <h4 class="pt-2"></h4>
     <section class="text-neutral-700">
         <div class="container w-full">
-            <h4 class="text-2xl pt-1 pb-1 text-center ">2025</h4>
+            <h4 class="text-2xl py-2 text-center ">2025</h4>
             <div class="flex flex-wrap w-full">
                 <div class="flex w-full md:w-1/2 flex-wrap">
                     <div class="w-full md:w-1/2 p-1">
@@ -369,7 +377,7 @@
     let player = new cplayer({
         element: document.getElementById('app2'),
         //size:'12px',
-        dropDownMenuMode:'none',
+        //dropDownMenuMode:'none',
         playlist: [
             {
                 src: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/music.mp3',
@@ -399,6 +407,22 @@
         }.bind(this))
     }
     player.add163(1456446169) //加入网易云id为 12345678 的歌曲*/
+</script>
+
+<script>
+    let isCollapsed = false;
+    function toggleSidebar() {
+        const sidebar = document.getElementById("sidebar");
+        const texts = document.querySelectorAll(".sidebar-text");
+        if (!isCollapsed) {
+            sidebar.style.width = "64px";
+            texts.forEach(el => el.style.display = "none");
+        } else {
+            sidebar.style.width = "16rem"; // Tailwind w-64
+            texts.forEach(el => el.style.display = "inline");
+        }
+        isCollapsed = !isCollapsed;
+    }
 </script>
 </body>
 
