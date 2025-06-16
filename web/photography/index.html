@@ -380,8 +380,16 @@
         //dropDownMenuMode:'none',
         playlist: [
             {
-                src: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/music.mp3',
-                poster: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/cover.jpg',
+                src: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/music-02.m4a',
+                poster: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/cover-02.jpg',
+                name: 'Welcome Home, Son',
+                artist: 'Radical Face',
+                lyric: '',
+                sublyric: ''
+            },
+            {
+                src: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/music-01.m4a',
+                poster: 'https://raw.githubusercontent.com/vincenty1ung/vincenty1ung.github.io/master/web/photography/src/music/cover-01.jpg',
                 name: '旅途愉快',
                 artist: '寸铁',
                 lyric: '',
@@ -389,7 +397,7 @@
             }
         ]
     })
-    player.mode = 'singlecycle' //设置当前播放模式为列表循环
+    player.mode = 'listloop' //设置当前播放模式为列表循环
     /*player.prototype.add163 = function add163(id) {
         if (!id) throw new Error("Unable Property.");
         return fetch("https://music.huaji8.top/?id=" + id).then(function(res){return res.json()}).then(function(data){
