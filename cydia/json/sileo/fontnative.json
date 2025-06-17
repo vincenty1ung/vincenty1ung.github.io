@@ -62,7 +62,7 @@
         },
         {
           "class": "DepictionTableTextView",
-          "text": "vincenty1ung (uncle_yeung)",
+          "text": "vincenty1ung (uncle_ch1n)",
           "title": "Author"
         },
         {
@@ -92,9 +92,9 @@
           "spacing": 16
         },
         {
-          "action": "https://twitter.com/uncle_yeung",
+          "action": "https://twitter.com/uncle_ch1n",
           "class": "DepictionTableButtonView",
-          "title": "Find me on Twitter (@uncle_yeung)",
+          "title": "Find me on Twitter (@uncle_ch1n)",
           "openExternal": true
         },
         {

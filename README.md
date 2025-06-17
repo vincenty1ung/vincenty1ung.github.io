@@ -21,8 +21,8 @@
 
 # vincenty1ung's Repo For Cydia
 > * Source: https://github.com/vincenty1ung/vincenty1ung.github.io/
-> * Twitter: https://twitter.com/uncle_yeung
-> * Tumblr: https://www.tumblr.com/blog/uncleyeung
+> * Twitter: https://twitter.com/uncle_ch1n
+> * Tumblr: https://www.tumblr.com/blog/unclech1n
 
 ### 前情提要 test
 - [ ] 自动编译deb并打包
