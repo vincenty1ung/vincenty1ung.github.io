@@ -1,0 +1,24 @@
+{
+  "name": "vincenty1ung.github.io",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <a href=\"https://github.com/vincenty1ung\">    <img alt=\"Uncle-Yeong-Logo\" src=\"./web/img/logo1.jpg\">   </a> </p>",
+  "main": "index.js",
+  "scripts": {
+    "start": "live-server web/photography"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincenty1ung/vincenty1ung.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vincenty1ung/vincenty1ung.github.io/issues"
+  },
+  "homepage": "https://github.com/vincenty1ung/vincenty1ung.github.io#readme",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
