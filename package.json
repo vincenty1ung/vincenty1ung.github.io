@@ -20,6 +20,6 @@
   },
   "homepage": "https://github.com/vincenty1ung/vincenty1ung.github.io#readme",
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.0"
   }
 }
