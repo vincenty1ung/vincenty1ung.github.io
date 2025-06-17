@@ -4,7 +4,8 @@
   "description": "<p align=\"center\">   <a href=\"https://github.com/vincenty1ung\">    <img alt=\"Uncle-Yeong-Logo\" src=\"./web/img/logo1.jpg\">   </a> </p>",
   "main": "index.js",
   "scripts": {
-    "start": "live-server web/photography"
+    "start": "live-server web/photography",
+    "build": "cp -r web/photography build"
   },
   "repository": {
     "type": "git",
