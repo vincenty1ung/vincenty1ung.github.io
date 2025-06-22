@@ -1,0 +1,25 @@
+{
+  "name": "vincent.github.io",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <a href=\"https://github.com/vincent\">    <img alt=\"Uncle-Yeong-Logo\" src=\"./web/img/logo1.jpg\">   </a> </p>",
+  "main": "index.js",
+  "scripts": {
+    "start": "live-server web/photography",
+    "build": "cp -r web/photography build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincent/vincent.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vincent/vincent.github.io/issues"
+  },
+  "homepage": "https://github.com/vincent/vincent.github.io#readme",
+  "devDependencies": {
+    "live-server": "^1.2.0"
+  }
+}
