@@ -64,6 +64,37 @@
       crossorigin="anonymous"
     ></script>
     <!-- End - Fancybox Scripts -->
+    <style>
+      .img-loading {
+        background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+        background-size: 200% 100%;
+        animation: imgShimmer 1.2s infinite linear;
+        opacity: 0.3 !important;
+      }
+      .img-skeleton {
+        background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+        background-size: 200% 100%;
+        animation: imgShimmer 1.2s infinite linear;
+        border-radius: 0.5rem;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+      }
+      @keyframes imgShimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      .audio-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 60px;
+      }
+    </style>
   </head>
 
   <body
@@ -156,7 +187,9 @@
     <!-- Content -->
     <div class="container mx-auto">
       <h1 class="text-4xl pt-10 pb-8 font-bold">PORTFOLIO</h1>
-      <div id="app2"></div>
+      <div id="app2">
+        <div id="audio-loading" class="audio-loading">音乐加载中...</div>
+      </div>
       <!-- Sidebar -->
       <h4 class="pt-2"></h4>
       <section class="text-neutral-700">
@@ -165,44 +198,49 @@
           <div class="flex flex-wrap w-full">
             <div class="flex w-full md:w-1/2 flex-wrap">
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-24_049702.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a person standing in front of a rock formation"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-24_049702_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
-                  <!--<a href="../../web/photography/src/img/DSC_2025-03-02_6938.JPG"-->
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-03-02_6938.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a cat laying on top of a sidewalk next to the ocean"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-03-02_6938_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-01_1.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a man standing on a beach next to the ocean"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-01_1_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
@@ -210,71 +248,81 @@
             </div>
             <div class="flex w-full md:w-1/2 flex-wrap">
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-04_003002.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a snow covered mountain with trees on the side"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-04_003002_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-03_021102.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a branch of a plant floating in a body of water"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-03_021102_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-04_014002.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a blue sky with a lot of red and orange clouds"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-04_014002_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-04_002702.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a view of the ocean from the top of a hill"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-04_002702_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-04_052302.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a pheasant flying in the sky with its wings spread"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-04_052302_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
@@ -283,57 +331,65 @@
 
             <div class="flex w-full md:w-1/2 flex-wrap">
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-02-01_5053.jpg "
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a statue of a man next to a statue of a woman"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-02-01_5053_top.jpg "
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-04_050802.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a city street with tall buildings in the background"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-04_050802_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-04_003202.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="25 de abril bridge spanning over Tagus river"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-04_003202_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-01-30_4610.jpg "
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a lot of lanterns floating in the air at night"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-01-30_4610_top.jpg "
+                      loading="lazy"
                     />
                   </a>
                 </div>
@@ -341,71 +397,81 @@
             </div>
             <div class="flex w-full md:w-1/2 flex-wrap">
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-04-20_4602.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a statue of a headless angel"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-04-20_4602_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-04-20_02.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="Monument to the Discoveries viewed from top to bottom"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-04-20_02_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-24_017702.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a group of people walking along the museum of art, architecture and technology of lisbon next to the Tagus river"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-24_017702_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-24_044402.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a group of people walking along the museum of art, architecture and technology of lisbon next to the Tagus river"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-24_044402_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2025-05-01_008902.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a group of people walking along the museum of art, architecture and technology of lisbon next to the Tagus river"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2025-05-01_008902_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
@@ -418,43 +484,49 @@
           <div class="flex flex-wrap w-full">
             <div class="flex w-full md:w-1/2 flex-wrap">
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2024-10-06_2582.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a branch of a plant floating in a body of water"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2024-10-06_2582_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full md:w-1/2 p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2023-02-02_580402.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a branch of a plant floating in a body of water"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2023-02-02_580402_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
               </div>
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2023-04-04_202502.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a branch of a plant floating in a body of water"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2023-04-04_202502_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
@@ -462,15 +534,17 @@
             </div>
             <div class="flex w-full md:w-1/2 flex-wrap">
               <div class="w-full p-1">
-                <div class="overflow-hidden h-full w-full">
+                <div class="overflow-hidden h-full w-full relative aspect-[5/7]">
+                  <div class="img-skeleton absolute inset-0 z-10"></div>
                   <a
                     href="src/img/DSC_2023-01-29_511102.jpg"
                     data-fancybox="gallery"
                   >
                     <img
                       alt="a man standing on a beach next to the ocean"
-                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110"
+                      class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-110 img-loading"
                       src="src/img/DSC_2023-01-29_511102_top.jpg"
+                      loading="lazy"
                     />
                   </a>
                 </div>
@@ -607,8 +681,6 @@
     <script>
       let player = new cplayer({
         element: document.getElementById("app2"),
-        //size:'12px',
-        //dropDownMenuMode:'none',
         playlist: [
           {
             src: "src/music/music-02.m4a",
@@ -628,7 +700,8 @@
           },
         ],
       });
-      player.mode = "listloop"; //设置当前播放模式为列表循环
+      player.mode = "listloop";
+      document.getElementById('audio-loading').style.display = 'none';
       /*player.prototype.add163 = function add163(id) {
         if (!id) throw new Error("Unable Property.");
         return fetch("https://music.huaji8.top/?id=" + id).then(function(res){return res.json()}).then(function(data){
@@ -662,6 +735,34 @@
         }
         isCollapsed = !isCollapsed;
       }
+    </script>
+    <script>
+      // 自动处理所有图片骨架和显示问题（防止 null.style 报错）
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('a[href], img[src]').forEach(function(el) {
+          if (el.getAttribute('href')) el.setAttribute('href', el.getAttribute('href').trim());
+          if (el.getAttribute('src')) el.setAttribute('src', el.getAttribute('src').trim());
+        });
+        document.querySelectorAll('img.img-loading').forEach(function(img) {
+          if (img.src) img.src = img.src.trim();
+          function hideSkeleton(evt) {
+            let parent = img.parentElement && img.parentElement.parentElement;
+            let skeleton = parent ? parent.querySelector('.img-skeleton') : null;
+            img.classList.remove('img-loading');
+            img.classList.remove('opacity-0');
+            if (img) img.style.opacity = 1;
+            if (skeleton) {
+              skeleton.remove();
+            }
+          }
+          if (img.complete && img.naturalWidth > 0) {
+            hideSkeleton();
+          } else {
+            img.addEventListener('load', hideSkeleton);
+            img.addEventListener('error', hideSkeleton);
+          }
+        });
+      });
     </script>
   </body>
 </html>

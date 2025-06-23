@@ -29,6 +29,33 @@
       rel="stylesheet"
     />
     <!-- End - Fonts -->
+    <style>
+      .img-loading {
+        background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+        background-size: 200% 100%;
+        animation: imgShimmer 1.2s infinite linear;
+        opacity: 0.3 !important;
+      }
+      .img-skeleton {
+        background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+        background-size: 200% 100%;
+        animation: imgShimmer 1.2s infinite linear;
+        border-radius: 0.5rem;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        position: absolute;
+        inset: 0;
+      }
+      @keyframes imgShimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+    </style>
   </head>
 
   <body
@@ -121,10 +148,12 @@
           <div
             class="bg-white dark:bg-neutral-900 p-5 pb-28 m-6 md:m-12 shadow-lg border border-gray-100 dark:border-neutral-800 hover:rotate-0 transition duration-500 -rotate-6 relative"
           >
+            <div class="img-skeleton"></div>
             <img
               src="../src/img/DSC_2024-12-15_3551_top.jpg"
               alt=""
-              class="smooth-edges flex flex-col w-full aspect-square object-cover h-auto"
+              class="smooth-edges flex flex-col w-full aspect-square object-cover h-auto img-loading"
+              loading="lazy"
             />
             <div class="absolute bottom-0 left-0 right-0 text-center">
               <p
@@ -289,5 +318,45 @@
     </footer>
     <script src="fade_in.js"></script>
     <script src="menu.js"></script>
+    <script>
+      // 自动处理所有图片骨架和显示问题（父级查找骨架层，避免选择器报错）
+      document.addEventListener('DOMContentLoaded', function () {
+        // 修正所有 a[href] 和 img[src] 路径空格
+        document.querySelectorAll('a[href], img[src]').forEach(function(el) {
+          if (el.getAttribute('href')) el.setAttribute('href', el.getAttribute('href').trim());
+          if (el.getAttribute('src')) el.setAttribute('src', el.getAttribute('src').trim());
+        });
+        document.querySelectorAll('img.img-loading').forEach(function(img) {
+          if (img.src) img.src = img.src.trim();
+          function hideSkeleton(evt) {
+            // 直接用父级查找骨架层
+            let parent = img.parentElement;
+            let skeleton = parent ? parent.querySelector('.img-skeleton') : null;
+            console.log('[图片调试]', {
+              src: img.src,
+              complete: img.complete,
+              naturalWidth: img.naturalWidth,
+              event: evt ? evt.type : 'init',
+              skeleton: !!skeleton
+            });
+            img.classList.remove('img-loading');
+            img.classList.remove('opacity-0');
+            img.style.opacity = 1;
+            if (skeleton) {
+              skeleton.remove();
+              console.log('[骨架] 已移除');
+            } else {
+              console.log('[骨架] 未找到');
+            }
+          }
+          if (img.complete && img.naturalWidth > 0) {
+            hideSkeleton();
+          } else {
+            img.addEventListener('load', hideSkeleton);
+            img.addEventListener('error', hideSkeleton);
+          }
+        });
+      });
+    </script>
   </body>
 </html>
