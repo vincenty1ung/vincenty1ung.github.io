@@ -71,16 +71,34 @@
         background: #bbb;
         animation: audio-bounce 1.2s infinite both;
       }
-      .img-skeleton .dot:nth-child(1) { animation-delay: 0s; }
-      .img-skeleton .dot:nth-child(2) { animation-delay: 0.2s; }
-      .img-skeleton .dot:nth-child(3) { animation-delay: 0.4s; }
+      .img-skeleton .dot:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .img-skeleton .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .img-skeleton .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
       @keyframes imgShimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
       }
       @keyframes audio-bounce {
-        0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-        40% { transform: scale(1.2); opacity: 1; }
+        0%,
+        80%,
+        100% {
+          transform: scale(0.7);
+          opacity: 0.5;
+        }
+        40% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
       }
     </style>
   </head>
@@ -351,40 +369,44 @@
     <script src="menu.js"></script>
     <script>
       // 自动处理所有图片骨架和显示问题（父级查找骨架层，避免选择器报错）
-      document.addEventListener('DOMContentLoaded', function () {
+      document.addEventListener("DOMContentLoaded", function () {
         // 修正所有 a[href] 和 img[src] 路径空格
-        document.querySelectorAll('a[href], img[src]').forEach(function(el) {
-          if (el.getAttribute('href')) el.setAttribute('href', el.getAttribute('href').trim());
-          if (el.getAttribute('src')) el.setAttribute('src', el.getAttribute('src').trim());
+        document.querySelectorAll("a[href], img[src]").forEach(function (el) {
+          if (el.getAttribute("href"))
+            el.setAttribute("href", el.getAttribute("href").trim());
+          if (el.getAttribute("src"))
+            el.setAttribute("src", el.getAttribute("src").trim());
         });
-        document.querySelectorAll('img.img-loading').forEach(function(img) {
+        document.querySelectorAll("img.img-loading").forEach(function (img) {
           if (img.src) img.src = img.src.trim();
           function hideSkeleton(evt) {
             // 直接用父级查找骨架层
             let parent = img.parentElement;
-            let skeleton = parent ? parent.querySelector('.img-skeleton') : null;
-            console.log('[图片调试]', {
+            let skeleton = parent
+              ? parent.querySelector(".img-skeleton")
+              : null;
+            console.log("[图片调试]", {
               src: img.src,
               complete: img.complete,
               naturalWidth: img.naturalWidth,
-              event: evt ? evt.type : 'init',
-              skeleton: !!skeleton
+              event: evt ? evt.type : "init",
+              skeleton: !!skeleton,
             });
-            img.classList.remove('img-loading');
-            img.classList.remove('opacity-0');
+            img.classList.remove("img-loading");
+            img.classList.remove("opacity-0");
             img.style.opacity = 1;
             if (skeleton) {
               skeleton.remove();
-              console.log('[骨架] 已移除');
+              console.log("[骨架] 已移除");
             } else {
-              console.log('[骨架] 未找到');
+              console.log("[骨架] 未找到");
             }
           }
           if (img.complete && img.naturalWidth > 0) {
             hideSkeleton();
           } else {
-            img.addEventListener('load', hideSkeleton);
-            img.addEventListener('error', hideSkeleton);
+            img.addEventListener("load", hideSkeleton);
+            img.addEventListener("error", hideSkeleton);
           }
         });
       });
