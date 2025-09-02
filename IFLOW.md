@@ -49,6 +49,13 @@
 - 使用 Fancybox 实现图片画廊效果
 - 支持音乐播放器集成
 
+有关如何添加新的年份作品集的详细指南，请参阅 [PHOTOGRAPHY_GUIDE.md](PHOTOGRAPHY_GUIDE.md) 文件。
+该指南包含了添加新年份照片的完整步骤，包括：
+- 文件准备和目录结构
+- HTML文件创建和格式要求
+- JavaScript加载脚本更新
+- 验证和测试步骤
+
 ### 2. Cydia 软件仓库
 - 提供 iOS 越狱应用的 deb 包托管
 - 自动生成 Packages 索引文件
