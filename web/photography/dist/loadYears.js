@@ -1,8 +1,8 @@
 // 定义要加载的年份文件(按倒序排列)
 const yearFiles = ['2025.html', '2023.html'];
 
-// 动态加载年份内容
-function loadYearContent() {
+// 动态加载年份内容 - 并行加载但按顺序显示
+async function loadYearContent() {
   console.log('开始加载年份内容...');
   const container = document.getElementById('portfolio-years');
   
@@ -14,78 +14,84 @@ function loadYearContent() {
   
   console.log('找到容器元素:', container);
   
-  // 创建一个计数器来跟踪加载完成的文件数量
-  let loadedCount = 0;
-  
   // 检查是否在iframe中运行（可能与浏览器扩展冲突有关）
   if (window.self !== window.top) {
     console.warn('代码在iframe中运行，可能存在浏览器扩展冲突');
   }
   
-  // 按倒序加载每个年份文件
-  yearFiles.forEach(file => {
+  // 创建一个数组来存储每个年份文件的Promise
+  const promises = yearFiles.map(file => {
     console.log(`开始加载文件: ${file}`);
     
     // 使用XMLHttpRequest作为fetch的备选方案
     if (typeof fetch === 'undefined') {
       console.warn('fetch API不可用，使用XMLHttpRequest');
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', file, true);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            handleFileData(file, xhr.responseText, container, yearFiles.length, () => {
-              loadedCount++;
-              return loadedCount;
-            });
-          } else {
-            console.error(`加载 ${file} 失败:`, xhr.status, xhr.statusText);
-            loadedCount++;
-            checkAndBindFancybox(loadedCount, yearFiles.length);
-          }
-        }
-      };
-      xhr.onerror = function() {
-        console.error(`加载 ${file} 网络错误`);
-        loadedCount++;
-        checkAndBindFancybox(loadedCount, yearFiles.length);
-      };
-      try {
-        xhr.send();
-      } catch (error) {
-        console.error(`发送请求 ${file} 失败:`, error);
-        loadedCount++;
-        checkAndBindFancybox(loadedCount, yearFiles.length);
-      }
-      return;
-    }
-    
-    // 使用fetch API
-    fetch(file)
-      .then(response => {
-        console.log(`收到 ${file} 的响应:`, response.status, response.statusText);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.text();
-      })
-      .then(data => {
-        handleFileData(file, data, container, yearFiles.length, () => {
-          loadedCount++;
-          return loadedCount;
-        });
-      })
-      .catch(error => {
+      return loadFileWithXHR(file).then(data => ({file, data})).catch(error => {
         console.error(`加载 ${file} 失败:`, error);
-        // 即使某个文件加载失败，也要增加计数以确保其他文件的 Fancybox 能正常工作
-        loadedCount++;
-        checkAndBindFancybox(loadedCount, yearFiles.length);
+        return {file, data: null, error};
       });
+    } else {
+      // 使用fetch API
+      return loadFileWithFetch(file).then(data => ({file, data})).catch(error => {
+        console.error(`加载 ${file} 失败:`, error);
+        return {file, data: null, error};
+      });
+    }
+  });
+  
+  // 等待所有文件加载完成
+  const results = await Promise.all(promises);
+  
+  // 按原始顺序处理结果
+  results.forEach(result => {
+    if (result.data) {
+      handleFileData(result.file, result.data, container, yearFiles.length);
+    }
+  });
+  
+  // 所有文件处理完成，绑定Fancybox
+  checkAndBindFancybox(yearFiles.length, yearFiles.length);
+}
+
+// 使用XMLHttpRequest加载文件的辅助函数
+function loadFileWithXHR(file) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', file, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          resolve(xhr.responseText);
+        } else {
+          reject(new Error(`HTTP error! status: ${xhr.status}`));
+        }
+      }
+    };
+    xhr.onerror = function() {
+      reject(new Error(`网络错误`));
+    };
+    try {
+      xhr.send();
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
+// 使用fetch加载文件的辅助函数
+function loadFileWithFetch(file) {
+  return fetch(file)
+    .then(response => {
+      console.log(`收到 ${file} 的响应:`, response.status, response.statusText);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.text();
+    });
+}
+
 // 处理文件数据的通用函数
-function handleFileData(fileName, data, container, totalFiles, incrementCounter) {
+function handleFileData(fileName, data, container, totalFiles) {
   console.log(`成功获取 ${fileName} 的内容，长度: ${data.length} 字符`);
   
   // 创建一个临时元素来解析 HTML
@@ -103,13 +109,8 @@ function handleFileData(fileName, data, container, totalFiles, incrementCounter)
     console.warn(`${fileName} 没有有效内容可添加`);
   }
   
-  // 增加加载完成计数
-  const newCount = incrementCounter();
-  console.log(`加载进度: ${newCount}/${totalFiles}`);
-  
   // 在内容添加到DOM后，重新绑定图片加载事件和Fancybox事件
   bindImageLoadEvents();
-  checkAndBindFancybox(newCount, totalFiles);
 }
 
 // 绑定图片加载事件的函数
