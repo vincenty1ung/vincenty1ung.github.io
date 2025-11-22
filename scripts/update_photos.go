@@ -168,11 +168,20 @@ func UpdatePhotosHandler() {
 	imgDirPath := filepath.Join(rootDir, ImgDir)
 	outputFilePath := filepath.Join(rootDir, OutputFile)
 
-	// 1. Read existing photos.json to preserve metadata
+	// 1. Read existing photos.json to preserve metadata and identify files to delete
 	existingAlbums := make(map[string]map[string]Photo)
+	var existingAllPhotos []Photo // Keep track of all existing photos for deletion comparison
 	if _, err := os.Stat(outputFilePath); err == nil {
+		// Create backup of existing photos.json
 		content, err := os.ReadFile(outputFilePath)
 		if err == nil {
+			backupPath := outputFilePath + "." + time.Now().Format("20060102_150405") + ".bak"
+			if err := os.WriteFile(backupPath, content, 0644); err != nil {
+				fmt.Printf("Warning: Could not create backup of %s: %v\n", outputFilePath, err)
+			} else {
+				fmt.Printf("✓ Backup created: %s\n", backupPath)
+			}
+
 			var albums []YearAlbum
 			if err := json.Unmarshal(content, &albums); err == nil {
 				for _, album := range albums {
@@ -181,9 +190,13 @@ func UpdatePhotosHandler() {
 					}
 					for _, p := range album.Photos {
 						existingAlbums[album.Year][p.Filename] = p
+						existingAllPhotos = append(existingAllPhotos, p)
 					}
 				}
-				fmt.Printf("Loaded existing metadata for %d years.\n", len(albums))
+				fmt.Printf(
+					"Loaded existing metadata for %d years with %d total photos.\n", len(albums),
+					len(existingAllPhotos),
+				)
 			}
 		}
 	}
@@ -411,6 +424,58 @@ func UpdatePhotosHandler() {
 		}
 	}
 
+	// Find photos to delete by comparing existing photos with new photos
+	var photosToDelete []Photo
+	if len(existingAllPhotos) > 0 {
+		// Create a map of new photos for quick lookup
+		newPhotosMap := make(map[string]bool)
+		for _, album := range newAlbums {
+			for _, photo := range album.Photos {
+				newPhotosMap[photo.Filename] = true
+			}
+		}
+
+		// Find photos that exist in old list but not in new list
+		for _, existingPhoto := range existingAllPhotos {
+			if !newPhotosMap[existingPhoto.Filename] {
+				photosToDelete = append(photosToDelete, existingPhoto)
+			}
+		}
+	}
+
+	// Delete photos from R2 if R2 client is available
+	if r2Client != nil && len(photosToDelete) > 0 {
+		fmt.Printf("Deleting %d photos from R2...\n", len(photosToDelete))
+		for _, photo := range photosToDelete {
+			// Extract filename without extension for generating R2 keys
+			filenameWithoutExt := strings.TrimSuffix(photo.Filename, filepath.Ext(photo.Filename))
+
+			// Delete original photo from R2
+			originalKey := fmt.Sprintf(
+				"%s%s%s", r2Client.config.BasePrefix, r2Client.config.OriginalPrefix, photo.Filename,
+			)
+			if err := r2Client.DeleteObject(originalKey); err != nil {
+				fmt.Printf("⚠️  Failed to delete original from R2: %s (%v)\n", photo.Filename, err)
+			} else {
+				fmt.Printf("✓ Deleted original from R2: %s\n", originalKey)
+			}
+
+			// Delete thumbnail from R2
+			thumbnailKey := fmt.Sprintf(
+				"%s%s%s%s", r2Client.config.BasePrefix, r2Client.config.ThumbnailPrefix, filenameWithoutExt, ExtWebP,
+			)
+			if err := r2Client.DeleteObject(thumbnailKey); err != nil {
+				fmt.Printf("⚠️  Failed to delete thumbnail from R2: %s (%v)\n", thumbnailKey, err)
+			} else {
+				fmt.Printf("✓ Deleted thumbnail from R2: %s\n", thumbnailKey)
+			}
+		}
+	} else if len(photosToDelete) > 0 {
+		fmt.Printf("Found %d photos to delete, but R2 client not available.\n", len(photosToDelete))
+	} else {
+		fmt.Printf("No photos to delete from R2.\n")
+	}
+
 	// Use Marshal instead of MarshalIndent for minified output
 	jsonData, err := json.Marshal(newAlbums)
 	if err != nil {
@@ -424,5 +489,11 @@ func UpdatePhotosHandler() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully generated %s with %d years.\n", outputFilePath, len(newAlbums))
+	totalPhotos := 0
+	for _, album := range newAlbums {
+		totalPhotos += len(album.Photos)
+	}
+	fmt.Printf(
+		"Successfully generated %s with %d years and %d total photos.\n", outputFilePath, len(newAlbums), totalPhotos,
+	)
 }

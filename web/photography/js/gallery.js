@@ -395,7 +395,7 @@ function renderMonthSection(container, year, month, photos) {
             .grid-masonry {
                 display: grid;
                 grid-auto-flow: dense;
-                grid-auto-rows: minmax(120px, auto);
+                grid-auto-rows: minmax(120px, 180px);  /* 设置最大高度以避免过大缩略图 */
                 /* Default to 2 columns for mobile */
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -405,13 +405,36 @@ function renderMonthSection(container, year, month, photos) {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
             
+            @media (min-width: 640px) {
+                .grid-masonry {
+                    grid-auto-rows: minmax(140px, 200px);  /* 中等屏幕最大高度 */
+                }
+            }
+            
             @media (min-width: 768px) {
                 .md-grid-cols-4 {
                     grid-template-columns: repeat(4, minmax(0, 1fr));
                 }
                 .grid-masonry {
-                    grid-auto-rows: minmax(180px, auto);
+                    grid-auto-rows: minmax(150px, 220px);  /* 大屏幕最大高度 */
                 }
+            }
+            
+            @media (min-width: 1024px) {
+                .grid-masonry {
+                    grid-auto-rows: minmax(160px, 220px);  /* 超大屏幕最大高度 */
+                }
+            }
+            
+            /* Custom hover effect for images */
+            .img-hover-zoom {
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                transform: scale(1);
+            }
+            
+            .img-hover-zoom:hover {
+                transform: scale(1.03);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
         `;
     document.head.appendChild(style);
@@ -433,20 +456,20 @@ function createPhotoCard(photo) {
   const wrapper = document.createElement("div");
   
   // Define possible size combinations for masonry effect
-  // Removed 3-column wide images to keep thumbnails at reasonable size
+  // Adjusted weights to reduce large thumbnails and improve page quality
   const sizeVariations = [
     // Small squares - most common
-    { col: 1, row: 1, aspect: "aspect-square", weight: 35 },
+    { col: 1, row: 1, aspect: "aspect-square", weight: 50 },
     // Vertical rectangles
-    { col: 1, row: 2, aspect: "aspect-[3/4]", weight: 25 },
-    { col: 1, row: 2, aspect: "aspect-[2/3]", weight: 15 },
+    { col: 1, row: 2, aspect: "aspect-[3/4]", weight: 20 },
+    { col: 1, row: 2, aspect: "aspect-[2/3]", weight: 12 },
     // Horizontal rectangles (2 columns max)
-    { col: 2, row: 1, aspect: "aspect-[16/9]", weight: 12 },
-    { col: 2, row: 1, aspect: "aspect-[4/3]", weight: 8 },
-    // Large squares
+    { col: 2, row: 1, aspect: "aspect-[7/5]", weight: 8 },
+    { col: 2, row: 1, aspect: "aspect-[4/3]", weight: 5 },
+    // Large squares - rarely used
     { col: 2, row: 2, aspect: "aspect-square", weight: 3 },
-    // Tall vertical
-    { col: 1, row: 3, aspect: "aspect-[3/5]", weight: 2 },
+    // Tall vertical - very rare
+    { col: 1, row: 2, aspect: "aspect-[3/5]", weight: 2 },
   ];
   
   // Weighted random selection
@@ -484,7 +507,7 @@ function createPhotoCard(photo) {
              class="block h-full w-full">
             <img
               alt="${photo.alt || ""}"
-              class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-500 transform scale-100 hover:scale-105 img-loading rounded-lg"
+              class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-300 transform scale-100 img-hover-zoom img-loading rounded-lg"
               src="${photo.thumbnail}"
               loading="lazy"
             />

@@ -194,6 +194,32 @@ func (r *R2Client) UploadBytes(data []byte, key, contentType string) error {
 	return nil
 }
 
+// DeleteObject del data to R2
+func (r *R2Client) DeleteObject(key string) error {
+	ctx := context.Background()
+	_, err := r.client.DeleteObject(
+		ctx, &s3.DeleteObjectInput{
+			Bucket:                    aws.String(r.config.Bucket),
+			Key:                       aws.String(key),
+			BypassGovernanceRetention: nil,
+			ExpectedBucketOwner:       nil,
+			IfMatch:                   nil,
+			IfMatchLastModifiedTime:   nil,
+			IfMatchSize:               nil,
+			MFA:                       nil,
+			RequestPayer:              "",
+			VersionId:                 nil,
+		},
+	)
+	// res.DeleteMarker
+
+	if err != nil {
+		return fmt.Errorf("failed to delete object to R2: %w", err)
+	}
+
+	return nil
+}
+
 // GetCDNUrl returns the CDN URL for a given key
 func (r *R2Client) GetCDNUrl(key string) string {
 	if r.config.CDNUrl != "" {

@@ -1,4 +1,4 @@
-package scripts
+package main
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func Serve() {
+func main() {
 	// Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -18,7 +18,7 @@ func Serve() {
 	fs := http.FileServer(http.Dir(cwd))
 	http.Handle("/", fs)
 
-	port := "8080"
+	port := "3001"
 	fmt.Printf("Starting local server at http://localhost:%s\n", port)
 	fmt.Printf("Serving files from: %s\n", cwd)
 	fmt.Println("Press Ctrl+C to stop")
