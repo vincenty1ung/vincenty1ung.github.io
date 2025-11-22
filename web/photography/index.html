@@ -73,6 +73,7 @@
       href="https://cdn-photography-img-vincent.chyu.org/info/favicon.png"
     />
     <link rel="stylesheet" href="dist/output.css" />
+    <link rel="stylesheet" href="css/metadata-panel.css?v=3" />
     <!-- Alpine.js -->
     <script defer src="dist/cdn.min.js"></script>
     <!-- Start - Fonts -->
@@ -190,11 +191,152 @@
           opacity: 1;
         }
       }
+      /* Timeline Styles - Fixed Position with Hover Show/Hide */
+      .timeline-hover-container {
+        position: fixed !important;
+        /* Default: hidden, translate to left (almost completely hidden) */
+        transform: translateX(calc(-100% + 8px));
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        will-change: transform;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+        padding-left: 12px;
+        padding-right: 16px;
+        border-radius: 0 16px 16px 0;
+        /* Show a small peek when hidden */
+      }
+
+      .timeline-hover-container.show {
+        transform: translateX(0);
+        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.2);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .timeline-hover-container {
+          background: rgba(0, 0, 0, 0.98);
+          box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
+        }
+        .timeline-hover-container.show {
+          box-shadow: 4px 0 25px rgba(0, 0, 0, 0.8);
+        }
+      }
+
+      /* Hover trigger zone on left edge */
+      .timeline-hover-zone {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 40px;
+        height: 100vh;
+        z-index: 48;
+        background: transparent;
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      /* When timeline is shown, disable pointer events on hover zone to allow clicks */
+      .timeline-hover-container.show ~ * .timeline-hover-zone,
+      body:has(.timeline-hover-container.show) .timeline-hover-zone {
+        pointer-events: none;
+      }
+
+      /* Ensure timeline links are clickable */
+      .timeline-hover-container a {
+        pointer-events: auto !important;
+        position: relative;
+        z-index: 10;
+        display: inline-block;
+        width: 100%;
+      }
+
+      /* Ensure timeline container allows pointer events */
+      .timeline-hover-container {
+        pointer-events: auto !important;
+      }
+
+      /* Ensure all interactive elements in timeline are clickable */
+      .timeline-hover-container * {
+        pointer-events: auto;
+      }
+
+      /* Visual indicator when hovering near left edge */
+      .timeline-hover-zone:hover::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 60px;
+        background: linear-gradient(
+          to bottom,
+          rgba(59, 130, 246, 0.5),
+          rgba(59, 130, 246, 0.8),
+          rgba(59, 130, 246, 0.5)
+        );
+        border-radius: 0 2px 2px 0;
+        animation: pulse-indicator 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse-indicator {
+        0%,
+        100% {
+          opacity: 0.5;
+          transform: translateY(-50%) scaleY(1);
+        }
+        50% {
+          opacity: 0.8;
+          transform: translateY(-50%) scaleY(1.1);
+        }
+      }
+
+      #timeline-sidebar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+      }
+      #timeline-sidebar::-webkit-scrollbar {
+        width: 4px;
+      }
+      #timeline-sidebar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #timeline-sidebar::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.5);
+        border-radius: 2px;
+      }
+      #timeline-sidebar::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(156, 163, 175, 0.8);
+      }
+      @media (prefers-color-scheme: dark) {
+        #timeline-sidebar {
+          scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+        }
+        #timeline-sidebar::-webkit-scrollbar-thumb {
+          background-color: rgba(75, 85, 99, 0.5);
+        }
+        #timeline-sidebar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(75, 85, 99, 0.8);
+        }
+      }
+      /* Smooth transitions for timeline items */
+      .timeline-year,
+      .timeline-month {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .timeline-marker {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
     </style>
   </head>
 
   <body
-    class="dark:bg-black bg-white h-screen text-black dark:text-white px-5 md:px-20 opacity-0 animate-fade-in transition duration-500"
+    class="dark:bg-black bg-white min-h-screen text-black dark:text-white px-5 md:px-20 opacity-0 animate-fade-in transition duration-500"
   >
     <!-- Navbar -->
     <header class="flex w-full overflow-hidden pt-10 pb-1">
@@ -292,9 +434,30 @@
       <div id="app2"></div>
       <!-- Sidebar -->
       <h4 class="pt-2"></h4>
-      <section class="text-neutral-700">
+      <section class="text-neutral-700 pt-10">
+        <div class="flex flex-col md:flex-row gap-8 items-start">
+          <!-- Hover trigger zone on left edge -->
+          <div
+            class="hidden md:block timeline-hover-zone"
+            id="timeline-hover-zone"
+          ></div>
+
+          <!-- Timeline Sidebar (Fixed on Desktop - Hover to Show) -->
+          <aside
+            class="hidden md:block w-56 flex-shrink-0 fixed left-0 top-24 bottom-8 max-h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden z-50 timeline-hover-container"
+            id="timeline-sidebar"
+          >
+            <!-- Timeline content injected by JS -->
+          </aside>
+
+          <!-- Main Gallery Content -->
+          <div class="flex-grow min-w-0" id="gallery-content">
+            <!-- Gallery content injected by JS -->
+          </div>
+        </div>
+
         <!-- 年份内容将通过 JavaScript 动态加载 -->
-        <div id="portfolio-years"></div>
+        <!-- <div id="portfolio-years"></div> -->
       </section>
     </div>
     <!-- Footer -->
@@ -421,13 +584,12 @@
       </div>
     </footer>
     <!-- Script for the LightBox -->
-    <script>
-      Fancybox.bind("[data-fancybox]", {});
-    </script>
+
     <script src="dist/fade_in.js"></script>
     <script src="dist/menu.js"></script>
     <!-- 加载年份内容的脚本 -->
-    <script src="dist/loadYears.js"></script>
+    <!-- <script src="dist/loadYears.js"></script> -->
+    <script src="js/gallery.js?v=20251122003"></script>
     <!-- 加载 cplayer 脚本 -->
     <script src="dist/cplayer.min.js"></script>
     <script>
