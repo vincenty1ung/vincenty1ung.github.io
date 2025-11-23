@@ -21,6 +21,8 @@ function setupTimelineHover() {
 
   let hideTimeout = null;
   const HIDE_DELAY = 300; // Delay before hiding (ms)
+  const MOBILE_HIDE_DELAY = 1500; // Longer delay on mobile after click
+  let isMobileInteraction = false;
 
   // Show timeline when mouse enters hover zone or timeline itself
   function showTimeline() {
@@ -34,31 +36,69 @@ function setupTimelineHover() {
   }
 
   // Hide timeline when mouse leaves
-  function hideTimeline() {
+  function hideTimeline(useLongDelay = false) {
+    const delay = useLongDelay ? MOBILE_HIDE_DELAY : HIDE_DELAY;
     hideTimeout = setTimeout(() => {
       timelineSidebar.classList.remove("show");
       // Re-enable pointer events on hover zone when timeline is hidden
       hoverZone.style.pointerEvents = "auto";
-    }, HIDE_DELAY);
+      isMobileInteraction = false;
+    }, delay);
   }
 
-  // Show on hover zone
+  // Mouse events for desktop
   hoverZone.addEventListener("mouseenter", showTimeline);
-  hoverZone.addEventListener("mouseleave", hideTimeline);
+  hoverZone.addEventListener("mouseleave", () => {
+    if (!isMobileInteraction) {
+      hideTimeline();
+    }
+  });
 
-  // Keep showing when mouse is on timeline
   timelineSidebar.addEventListener("mouseenter", showTimeline);
-  timelineSidebar.addEventListener("mouseleave", hideTimeline);
+  timelineSidebar.addEventListener("mouseleave", () => {
+    if (!isMobileInteraction) {
+      hideTimeline();
+    }
+  });
 
-  // Ensure clicks on timeline links work properly
-  timelineSidebar.addEventListener(
-    "click",
-    function (e) {
-      // Allow click events to propagate normally
+  // Touch events for mobile
+  hoverZone.addEventListener("touchstart", (e) => {
+    isMobileInteraction = true;
+    showTimeline();
+  }, { passive: true });
+
+  timelineSidebar.addEventListener("touchstart", (e) => {
+    isMobileInteraction = true;
+    showTimeline();
+  }, { passive: true });
+
+  // Handle clicks on timeline links
+  timelineSidebar.addEventListener("click", function (e) {
+    // Only handle timeline-specific elements, don't interfere with other clicks
+    if (e.target.closest('.timeline-year, .timeline-month, .timeline-marker')) {
+      // Keep timeline visible longer after click on mobile
+      if (isMobileInteraction) {
+        showTimeline();
+        hideTimeline(true); // Use longer delay
+      }
+      // Stop propagation only for timeline clicks
       e.stopPropagation();
-    },
-    true
-  );
+    }
+  }, true);
+
+  // Hide timeline when clicking outside on mobile
+  document.addEventListener("touchstart", (e) => {
+    // Don't interfere with Fancybox
+    if (e.target.closest('.fancybox__container')) {
+      return;
+    }
+    
+    if (isMobileInteraction && 
+        !timelineSidebar.contains(e.target) && 
+        !hoverZone.contains(e.target)) {
+      hideTimeline();
+    }
+  }, { passive: true });
 }
 
 async function loadGallery() {
@@ -79,6 +119,10 @@ async function loadGallery() {
 
     // Global gallery state
     const galleryItems = [];
+
+    // Clear containers before re-rendering (important for orientation changes)
+    timelineContainer.innerHTML = '';
+    galleryContainer.innerHTML = '';
 
     // Render Timeline (Left Sidebar)
     renderTimeline(timelineContainer, albums);
@@ -138,28 +182,6 @@ async function loadGallery() {
               }
             },
             on: {
-              'shouldClose': (fancybox, event) => {
-                 // Blur all focusable elements BEFORE the close process starts
-                 // This event fires before 'closing', giving us time to remove focus
-                 const container = fancybox.container;
-                 if (container) {
-                   const buttons = container.querySelectorAll('button, a, [tabindex]');
-                   buttons.forEach(btn => {
-                     if (btn instanceof HTMLElement) {
-                       btn.blur();
-                     }
-                   });
-                 }
-                 // Blur active element
-                 if (document.activeElement instanceof HTMLElement && 
-                     document.activeElement.closest('.fancybox__container')) {
-                   document.activeElement.blur();
-                 }
-                 // Force focus to body to ensure nothing in the modal has focus
-                 document.body.focus();
-                 // Return true to allow closing
-                 return true;
-              },
               'Carousel.change': (fancybox, carousel, toIndex, fromIndex) => {
                 // Update metadata when slide changes
                 // Use galleryItems as the source of truth to avoid potential sync issues with carousel.slides
@@ -930,13 +952,11 @@ function debounce(func, wait) {
 }
 
 /**
- * Handle resize event
+ * Handle layout changes (orientation change or significant resize)
  */
 let currentColumnCount = null; // Will be set after first gallery load
 
-function handleResize() {
-  // Only reload if the column count actually changes
-  // This prevents unnecessary reloads on mobile when scrolling (browser UI changes trigger resize)
+function handleLayoutChange() {
   const newColumnCount = getColumnCount();
   
   // Skip if this is the first time (currentColumnCount not yet set)
@@ -951,8 +971,14 @@ function handleResize() {
   }
 }
 
-// Add resize listener
-window.addEventListener('resize', debounce(handleResize, 300));
+// Use orientationchange for mobile devices (more reliable than resize)
+// This only fires when device is actually rotated, not when scrolling
+if ('onorientationchange' in window) {
+  window.addEventListener('orientationchange', debounce(handleLayoutChange, 300));
+} else {
+  // Fallback to resize for desktop
+  window.addEventListener('resize', debounce(handleLayoutChange, 300));
+}
 
 
 /**

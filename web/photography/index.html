@@ -254,6 +254,31 @@
         z-index: 10;
         display: inline-block;
         width: 100%;
+        outline: none; /* Remove focus outline that causes white box */
+        -webkit-tap-highlight-color: transparent; /* Remove mobile tap highlight */
+      }
+      
+      /* Remove focus, active, and tap highlight from all timeline interactive elements */
+      .timeline-year,
+      .timeline-month,
+      .timeline-marker,
+      .timeline-year:focus,
+      .timeline-month:focus,
+      .timeline-marker:focus,
+      .timeline-year:active,
+      .timeline-month:active,
+      .timeline-marker:active {
+        outline: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        background: transparent !important;
+      }
+      
+      /* Remove tap highlight from timeline container */
+      #timeline-sidebar,
+      #timeline-sidebar *,
+      .timeline-hover-container,
+      .timeline-hover-container * {
+        -webkit-tap-highlight-color: transparent;
       }
 
       /* Ensure timeline container allows pointer events */
@@ -332,6 +357,15 @@
       }
       .timeline-marker {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      /* Optimize timeline for landscape mode (short height) */
+      @media (max-height: 500px) and (min-width: 768px) {
+        #timeline-sidebar {
+          top: 1rem !important;
+          bottom: 1rem !important;
+          max-height: calc(100vh - 2rem) !important;
+        }
       }
     </style>
   </head>
@@ -445,7 +479,7 @@
 
           <!-- Timeline Sidebar (Fixed on Desktop - Hover to Show) -->
           <aside
-            class="hidden md:block w-56 flex-shrink-0 fixed left-0 top-24 bottom-8 max-h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden z-50 timeline-hover-container"
+            class="hidden md:block w-56 flex-shrink-0 fixed left-0 top-20 bottom-4 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden z-50 timeline-hover-container"
             id="timeline-sidebar"
           >
             <!-- Timeline content injected by JS -->
