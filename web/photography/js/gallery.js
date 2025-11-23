@@ -235,6 +235,12 @@ async function loadGallery() {
 
     // Setup Scroll Spy for Timeline
     setupScrollSpy();
+    
+    // Set current column count after successful load
+    // This prevents unnecessary reloads on initial page load
+    if (typeof currentColumnCount !== 'undefined') {
+      currentColumnCount = getColumnCount();
+    }
   } catch (error) {
     console.error("Error loading gallery:", error);
     galleryContainer.innerHTML =
@@ -818,13 +824,18 @@ function renderStarRating(rating) {
 // --- Waterfall Layout Implementation ---
 
 /**
- * Get column count based on window width
+ * Get column count based on media queries (more accurate than width checks)
  */
 function getColumnCount() {
-  const width = window.innerWidth;
-  if (width >= 1200) return 5;  // Desktop
-  if (width >= 768) return 3;   // Tablet
-  return 2;                     // Mobile
+  // Use matchMedia to match the same breakpoints as Tailwind/CSS
+  // This is more reliable than checking window.innerWidth
+  if (window.matchMedia('(min-width: 1200px)').matches) {
+    return 5;  // Desktop
+  }
+  if (window.matchMedia('(min-width: 768px)').matches) {
+    return 3;  // Tablet
+  }
+  return 2;  // Mobile
 }
 
 /**
@@ -921,12 +932,18 @@ function debounce(func, wait) {
 /**
  * Handle resize event
  */
-let currentColumnCount = getColumnCount();
+let currentColumnCount = null; // Will be set after first gallery load
 
 function handleResize() {
   // Only reload if the column count actually changes
   // This prevents unnecessary reloads on mobile when scrolling (browser UI changes trigger resize)
   const newColumnCount = getColumnCount();
+  
+  // Skip if this is the first time (currentColumnCount not yet set)
+  if (currentColumnCount === null) {
+    currentColumnCount = newColumnCount;
+    return;
+  }
   
   if (newColumnCount !== currentColumnCount) {
     currentColumnCount = newColumnCount;
