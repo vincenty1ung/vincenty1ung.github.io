@@ -70,22 +70,24 @@ type ExifData map[string]interface{}
 
 // extractDateFromExif uses exiftool to extract EXIF data from a photo
 // Returns year, month, full date string (YYYY-MM-DD), and complete EXIF data
-func extractDateFromExif(filePath string) (year, month, dateStr string, exifData ExifData, err error) {
+func extractDateFromExif(filePath string) (
+	year, month, dateStr string, imageWidth, imageHeight int, exifData ExifData, err error,
+) {
 	// Run exiftool -json <filepath>
 	cmd := exec.Command("exiftool", "-json", filePath)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", "", "", nil, fmt.Errorf("exiftool command failed: %w", err)
+		return "", "", "", 0, 0, nil, fmt.Errorf("exiftool command failed: %w", err)
 	}
 
 	// Parse JSON output
 	var exifDataArray []ExifData
 	if err := json.Unmarshal(output, &exifDataArray); err != nil {
-		return "", "", "", nil, fmt.Errorf("failed to parse exiftool JSON: %w", err)
+		return "", "", "", 0, 0, nil, fmt.Errorf("failed to parse exiftool JSON: %w", err)
 	}
 
 	if len(exifDataArray) == 0 {
-		return "", "", "", nil, fmt.Errorf("no EXIF data found")
+		return "", "", "", 0, 0, nil, fmt.Errorf("no EXIF data found")
 	}
 
 	exifData = exifDataArray[0]
@@ -98,8 +100,19 @@ func extractDateFromExif(filePath string) (year, month, dateStr string, exifData
 		dateTimeStr = val
 	}
 
+	if val, ok := exifData["ImageWidth"].(float64); ok && val > 0 {
+		imageWidth = int(val)
+	} else if val, ok := exifData["ExifImageWidth"].(float64); ok && val > 0 {
+		imageWidth = int(val)
+	}
+	if val, ok := exifData["ImageHeight"].(float64); ok && val > 0 {
+		imageHeight = int(val)
+	} else if val, ok := exifData["ExifImageHeight"].(float64); ok && val > 0 {
+		imageHeight = int(val)
+	}
+
 	if dateTimeStr == "" {
-		return "", "", "", exifData, fmt.Errorf("no date information in EXIF")
+		return "", "", "", 0, 0, exifData, fmt.Errorf("no date information in EXIF")
 	}
 
 	// Parse the date string (format: "2025:11:02 13:22:57")
@@ -118,14 +131,14 @@ func extractDateFromExif(filePath string) (year, month, dateStr string, exifData
 	}
 
 	if err != nil {
-		return "", "", "", exifData, fmt.Errorf("failed to parse date '%s': %w", dateTimeStr, err)
+		return "", "", "", 0, 0, exifData, fmt.Errorf("failed to parse date '%s': %w", dateTimeStr, err)
 	}
 
 	year = fmt.Sprintf("%04d", parsedTime.Year())
 	month = fmt.Sprintf("%02d", parsedTime.Month())
 	dateStr = parsedTime.Format("2006-01-02")
 
-	return year, month, dateStr, exifData, nil
+	return year, month, dateStr, imageWidth, imageHeight, exifData, nil
 }
 func UpdatePhotosHandler() {
 	rootDir, err := os.Getwd()
@@ -312,7 +325,7 @@ func UpdatePhotosHandler() {
 				var photoExif ExifData
 
 				// Try to extract date from EXIF
-				exifYear, exifMonth, exifDateStr, exifData, err := extractDateFromExif(path)
+				exifYear, exifMonth, exifDateStr, imageWidth, imageHeight, exifData, err := extractDateFromExif(path)
 				if err == nil {
 					// Successfully extracted from EXIF
 					photoYear = exifYear
@@ -347,6 +360,8 @@ func UpdatePhotosHandler() {
 					Year:      photoYear,
 					Month:     month,
 					Date:      dateStr,
+					Width:     imageWidth,
+					Height:    imageHeight,
 					Exif:      photoExif,
 				}
 
@@ -354,8 +369,8 @@ func UpdatePhotosHandler() {
 				if existingYear, ok := existingAlbums[year]; ok {
 					if existingPhoto, ok := existingYear[filename]; ok {
 						photo.Alt = existingPhoto.Alt
-						photo.Width = existingPhoto.Width
-						photo.Height = existingPhoto.Height
+						// photo.Width = existingPhoto.Width
+						// photo.Height = existingPhoto.Height
 					}
 				}
 

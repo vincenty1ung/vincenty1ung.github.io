@@ -12,3 +12,4 @@ docker_mysql.session.sql
 web/photography/gallery_images/
 scripts/.env
 scripts/migrate_photos.go
+*.bak

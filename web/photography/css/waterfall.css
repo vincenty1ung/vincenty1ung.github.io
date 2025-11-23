@@ -1,0 +1,36 @@
+/* Waterfall Layout Styles */
+.waterfall-container {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.waterfall-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0; /* Prevent flex overflow */
+}
+
+.photo-card {
+  width: 100%;
+  break-inside: avoid;
+}
+
+.photo-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Keep existing hover and skeleton styles if they were inline or in other files, 
+   but ensure they work here. The plan mentions keeping them. */
+.img-hover-zoom {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.img-hover-zoom:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

@@ -77,74 +77,139 @@ async function loadGallery() {
     }
     const albums = await response.json();
 
+    // Global gallery state
+    const galleryItems = [];
+
     // Render Timeline (Left Sidebar)
     renderTimeline(timelineContainer, albums);
 
     // Render Gallery (Right Content)
-    renderGallery(galleryContainer, albums);
+    renderGallery(galleryContainer, albums, galleryItems);
 
-    // Bind Fancybox with metadata panel
+    // Bind Fancybox manually using event delegation
+    // This avoids issues with 'trigger' being undefined in initialPage callback
     if (typeof Fancybox !== "undefined") {
-      Fancybox.bind("[data-fancybox]", {
-        Toolbar: {
-          display: {
-            left: ["infobar"],
-            middle: [],
-            right: ["info", "zoom", "slideshow", "fullscreen", "thumbs", "close"],
-          },
-          items: {
-            info: {
-              tpl: `<button class="f-button" type="button" title="显示/隐藏照片信息" data-fancybox-info>
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                      </svg>
-                    </button>`,
-              click: (event) => {
-                // Handle different signature variations or event bubbling
-                const instance = Fancybox.getInstance();
-                if (instance && instance.container) {
-                  instance.container.classList.toggle('has-metadata-panel');
-                } else {
-                  console.error("Fancybox instance not found");
+      // Unbind any existing bindings to be safe
+      Fancybox.unbind("[data-fancybox]");
+      Fancybox.unbind("[data-fancybox-trigger]");
+      Fancybox.unbind(".gallery-item");
+
+      // Remove existing click listener if we could (but we can't easily without storing the function)
+      // So we'll just add a new one and rely on the fact that loadGallery usually runs once or on full reload
+      // For safety in SPA-like navigation, we could attach to a persistent container or check a flag
+      
+      galleryContainer.addEventListener('click', (e) => {
+        const link = e.target.closest('.gallery-item');
+        if (link) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const index = parseInt(link.dataset.index) || 0;
+          
+          Fancybox.show(galleryItems, {
+            startIndex: index,
+            groupAll: true,
+            autoFocus: false,
+            trapFocus: false,
+            placeFocusBack: false,
+            Toolbar: {
+              display: {
+                left: ["infobar"],
+                middle: [],
+                right: ["info", "zoom", "slideshow", "fullscreen", "thumbs", "close"],
+              },
+              items: {
+                info: {
+                  tpl: `<button class="f-button" type="button" title="显示/隐藏照片信息" data-fancybox-info>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                          </svg>
+                        </button>`,
+                  click: (event) => {
+                    const instance = Fancybox.getInstance();
+                    if (instance && instance.container) {
+                      instance.container.classList.toggle('has-metadata-panel');
+                    }
+                    if (event && event.stopPropagation) event.stopPropagation();
+                  }
                 }
-                if (event && event.stopPropagation) event.stopPropagation();
+              }
+            },
+            on: {
+              'closing': (fancybox) => {
+                 // Manually blur the active element to prevent "Blocked aria-hidden" warning
+                 // when Fancybox sets aria-hidden=true on the container while it still has focus.
+                 if (document.activeElement instanceof HTMLElement) {
+                   document.activeElement.blur();
+                 }
+              },
+              'Carousel.change': (fancybox, carousel, toIndex, fromIndex) => {
+                // Update metadata when slide changes
+                // Use galleryItems as the source of truth to avoid potential sync issues with carousel.slides
+                const item = galleryItems[toIndex];
+                if (!item) return;
+                
+                const exif = item.exif;
+                const filename = item.filename;
+                
+                // We need to wait for the container to be ready or just update if it exists
+                const container = fancybox.container;
+                if (!container) return;
+
+                try {
+                  const existingPanel = container.querySelector('.fancybox__metadata');
+                  if (existingPanel) existingPanel.remove();
+                  
+                  if (exif) {
+                    const metadataPanel = createMetadataPanel(exif, filename);
+                    container.appendChild(metadataPanel);
+                  }
+                } catch (e) {
+                  console.error('Failed to update metadata panel:', e);
+                }
+              },
+              'init': (fancybox) => {
+                 // Initial load handling is done via Carousel.change usually, 
+                 // but let's ensure the first slide gets processed if change doesn't fire on init
+                 // actually Carousel.change fires on init too usually, but let's be safe
+                 // or use 'reveal' just for the first one? 
+                 // actually 'Carousel.change' is reliable for navigation. 
+                 // 'reveal' is good for initial load. Let's keep 'reveal' but make sure it doesn't conflict.
+                 // Actually, let's just use 'Carousel.change' and trigger it manually or rely on it.
+                 // Fancybox 4/5 'Carousel.change' fires when index changes.
+                 // Let's also listen to 'reveal' to catch the very first load if change doesn't fire.
+              },
+              'reveal': (fancybox, slide) => {
+                 // Keep reveal for the initial open, as change might have fired before DOM was ready?
+                 // Or just to be safe.
+                 const exif = slide.exif;
+                 const filename = slide.filename;
+                 if (!exif) return;
+                 
+                 const container = fancybox.container;
+                 const existingPanel = container.querySelector('.fancybox__metadata');
+                 // Only add if not already there (to avoid double add if change fired)
+                 if (!existingPanel) {
+                    const metadataPanel = createMetadataPanel(exif, filename);
+                    container.appendChild(metadataPanel);
+                 } else {
+                    // If it exists, make sure it matches current slide?
+                    // The 'Carousel.change' should handle updates.
+                    // 'reveal' ensures it's there on first load.
+                 }
+              },
+              destroy: (fancybox) => {
+                const container = fancybox.container;
+                if (container) {
+                  container.classList.remove('has-metadata-panel');
+                  const metadataPanel = container.querySelector('.fancybox__metadata');
+                  if (metadataPanel) metadataPanel.remove();
+                }
               }
             }
-          }
-        },
-        on: {
-          reveal: (fancybox, slide) => {
-            // Add metadata panel when image is revealed
-            const exifData = slide.triggerEl?.dataset?.exif;
-            if (!exifData) return;
-            
-            try {
-              const exif = JSON.parse(exifData);
-              const filename = slide.triggerEl?.dataset?.filename || '';
-              const container = fancybox.container;
-              
-              const existingPanel = container.querySelector('.fancybox__metadata');
-              if (existingPanel) existingPanel.remove();
-              
-              // Create and add new metadata panel (hidden by default via CSS)
-              const metadataPanel = createMetadataPanel(exif, filename);
-              container.appendChild(metadataPanel);
-              
-            } catch (e) {
-              console.error('Failed to parse EXIF data:', e);
-            }
-          },
-          destroy: (fancybox) => {
-            // Clean up metadata panel when Fancybox is destroyed
-            const container = fancybox.container;
-            if (container) {
-              container.classList.remove('has-metadata-panel');
-              const metadataPanel = container.querySelector('.fancybox__metadata');
-              if (metadataPanel) metadataPanel.remove();
-            }
-          }
+          });
         }
       });
     }
@@ -310,30 +375,41 @@ function scrollToSection(sectionId) {
   }
 }
 
-function renderGallery(container, albums) {
+function renderGallery(container, albums, galleryItems) {
+  const allPhotos = [];
+  
   albums.forEach((album) => {
-    const yearSection = document.createElement("div");
-    yearSection.id = `year-${album.year}`;
-    yearSection.className = "mb-16 scroll-mt-24"; // scroll-mt for sticky header offset
-
-    // Year Header (Visible in gallery too, but subtle)
-    const yearHeader = document.createElement("h2");
-    yearHeader.className =
-      "text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200 border-b pb-2";
-    yearHeader.textContent = album.year;
-    yearSection.appendChild(yearHeader);
-
     const photosByMonth = groupPhotosByMonth(album.photos);
     const months = Object.keys(photosByMonth).sort((a, b) =>
       b.localeCompare(a)
     );
+    
+    let isFirstYearPhoto = true;
 
     months.forEach((month) => {
-      renderMonthSection(yearSection, album.year, month, photosByMonth[month]);
+      const monthPhotos = photosByMonth[month];
+      
+      if (monthPhotos.length > 0) {
+        // Mark the first photo of the month
+        if (!monthPhotos[0].markers) {
+          monthPhotos[0].markers = [];
+        }
+        monthPhotos[0].markers.push(`section-${album.year}-${month}`);
+        
+        // Mark the first photo of the year
+        if (isFirstYearPhoto) {
+          monthPhotos[0].markers.push(`year-${album.year}`);
+          isFirstYearPhoto = false;
+        }
+        
+        // Add all photos to the flat list
+        allPhotos.push(...monthPhotos);
+      }
     });
-
-    container.appendChild(yearSection);
   });
+  
+  // Render the single unified waterfall
+  renderWaterfallLayout(container, allPhotos, null, null, galleryItems);
 }
 
 function groupPhotosByMonth(photos) {
@@ -348,172 +424,107 @@ function groupPhotosByMonth(photos) {
   return groups;
 }
 
-function renderMonthSection(container, year, month, photos) {
-  const sectionId = `section-${year}-${month}`;
-  const section = document.createElement("div");
-  section.id = sectionId;
-  section.className = "mb-10 scroll-mt-32";
 
-  // Month Header
-  const monthName = new Date(2000, parseInt(month) - 1, 1).toLocaleString(
-    "default",
-    { month: "long" }
-  );
-  const header = document.createElement("h3");
-  header.className =
-    "text-xl font-semibold mb-4 text-gray-600 dark:text-gray-400 flex items-center";
-  header.innerHTML = `<span class="w-2 h-2 bg-gray-400 rounded-full mr-3"></span>${monthName}`;
-  section.appendChild(header);
+// ... createPhotoCard is fine as is, but we need to update renderWaterfallLayout ...
 
-  // Inject custom style for masonry grid layout
-  if (!document.getElementById("custom-grid-style")) {
-    const style = document.createElement("style");
-    style.id = "custom-grid-style";
-    style.innerHTML = `
-            /* Essential Utilities */
-            .gap-2 { gap: 0.5rem; }
-            .rounded-lg { border-radius: 0.5rem !important; }
-            .overflow-hidden { overflow: hidden; }
-            
-            /* Fix for Safari border-radius + overflow:hidden clipping issue */
-            .safari-rounded-fix {
-                transform: translateZ(0);
-                -webkit-mask-image: -webkit-radial-gradient(white, black);
-                isolation: isolate;
-            }
-            
-            /* Grid column spans */
-            .col-span-1 { grid-column: span 1 / span 1; }
-            .col-span-2 { grid-column: span 2 / span 2; }
-            
-            /* Grid row spans */
-            .row-span-1 { grid-row: span 1 / span 1; }
-            .row-span-2 { grid-row: span 2 / span 2; }
-            .row-span-3 { grid-row: span 3 / span 3; }
-            
-            /* Grid Layout */
-            .grid-masonry {
-                display: grid;
-                grid-auto-flow: dense;
-                grid-auto-rows: minmax(120px, 180px);  /* 设置最大高度以避免过大缩略图 */
-                /* Default to 2 columns for mobile */
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-            
-            /* Explicit class for 2 columns */
-            .grid-cols-2 {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-            
-            @media (min-width: 640px) {
-                .grid-masonry {
-                    grid-auto-rows: minmax(140px, 200px);  /* 中等屏幕最大高度 */
-                }
-            }
-            
-            @media (min-width: 768px) {
-                .md-grid-cols-4 {
-                    grid-template-columns: repeat(4, minmax(0, 1fr));
-                }
-                .grid-masonry {
-                    grid-auto-rows: minmax(150px, 220px);  /* 大屏幕最大高度 */
-                }
-            }
-            
-            @media (min-width: 1024px) {
-                .grid-masonry {
-                    grid-auto-rows: minmax(160px, 220px);  /* 超大屏幕最大高度 */
-                }
-            }
-            
-            /* Custom hover effect for images */
-            .img-hover-zoom {
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                transform: scale(1);
-            }
-            
-            .img-hover-zoom:hover {
-                transform: scale(1.03);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            }
-        `;
-    document.head.appendChild(style);
-  }
+// --- Waterfall Layout Implementation ---
 
-  const masonryContainer = document.createElement("div");
-  masonryContainer.className = "grid grid-masonry grid-cols-2 md-grid-cols-4 gap-2 w-full";
+// ... getColumnCount, calculatePhotoHeight, createWaterfallLayout are fine ...
 
-  photos.forEach((photo) => {
-    const photoHtml = createPhotoCard(photo);
-    masonryContainer.appendChild(photoHtml);
+/**
+ * Render waterfall layout to container
+ */
+function renderWaterfallLayout(container, photos, year, month, galleryItems) {
+  const columnCount = getColumnCount();
+  
+  // Populate galleryItems and assign global indices BEFORE creating layout
+  photos.forEach(photo => {
+    // Assign global index
+    photo.waterfallIndex = galleryItems.length;
+    
+    // Add to global items list for Fancybox
+    galleryItems.push({
+      src: photo.path,
+      thumb: photo.thumbnail,
+      caption: photo.alt || '',
+      exif: photo.exif, // Store full EXIF object
+      filename: photo.filename || ''
+    });
   });
 
-  section.appendChild(masonryContainer);
-  container.appendChild(section);
+  const columns = createWaterfallLayout(photos, columnCount);
+  
+  // Clear container
+  container.innerHTML = '';
+  
+  // Create waterfall container
+  const waterfallContainer = document.createElement('div');
+  waterfallContainer.className = 'waterfall-container';
+  
+  // Create columns
+  columns.forEach((columnPhotos, colIndex) => {
+    const columnDiv = document.createElement('div');
+    columnDiv.className = 'waterfall-column';
+    
+    columnPhotos.forEach(photo => {
+      const photoCard = createPhotoCard(photo, year, month);
+      columnDiv.appendChild(photoCard);
+    });
+    
+    waterfallContainer.appendChild(columnDiv);
+  });
+  
+  container.appendChild(waterfallContainer);
 }
 
-function createPhotoCard(photo) {
+function createPhotoCard(photo, year, month) {
   const wrapper = document.createElement("div");
+  wrapper.className = 'photo-card relative'; // Ensure relative positioning for anchors
+  wrapper.dataset.index = photo.waterfallIndex;
   
-  // Define possible size combinations for masonry effect
-  // Adjusted weights to reduce large thumbnails and improve page quality
-  const sizeVariations = [
-    // Small squares - most common
-    { col: 1, row: 1, aspect: "aspect-square", weight: 50 },
-    // Vertical rectangles
-    { col: 1, row: 2, aspect: "aspect-[3/4]", weight: 20 },
-    { col: 1, row: 2, aspect: "aspect-[2/3]", weight: 12 },
-    // Horizontal rectangles (2 columns max)
-    { col: 2, row: 1, aspect: "aspect-[7/5]", weight: 8 },
-    { col: 2, row: 1, aspect: "aspect-[4/3]", weight: 5 },
-    // Large squares - rarely used
-    { col: 2, row: 2, aspect: "aspect-square", weight: 3 },
-    // Tall vertical - very rare
-    { col: 1, row: 2, aspect: "aspect-[3/5]", weight: 2 },
-  ];
+  // Calculate aspect ratio for placeholder
+  // Default to 3:2 (1.5) if missing
+  const width = photo.width || 300;
+  const height = photo.height || 200;
+  const aspectRatio = `${width} / ${height}`;
   
-  // Weighted random selection
-  const totalWeight = sizeVariations.reduce((sum, v) => sum + v.weight, 0);
-  let random = Math.random() * totalWeight;
-  let selectedSize = sizeVariations[0];
+  wrapper.style.aspectRatio = aspectRatio;
   
-  for (const variation of sizeVariations) {
-    random -= variation.weight;
-    if (random <= 0) {
-      selectedSize = variation;
-      break;
-    }
-  }
-  
-  // Removed random rotation and translation for consistent gaps
-  
-  wrapper.className = `col-span-${selectedSize.col} row-span-${selectedSize.row}`;
-
-  // Serialize EXIF data for Fancybox
   const exifData = photo.exif ? JSON.stringify(photo.exif) : '';
   const filename = photo.filename || '';
   
+  // Generate hidden anchors if markers exist
+  let anchorsHtml = '';
+  if (photo.markers && photo.markers.length > 0) {
+    anchorsHtml = photo.markers.map(markerId => 
+      `<div id="${markerId}" class="absolute -top-24 left-0 w-full h-0 pointer-events-none invisible"></div>`
+    ).join('');
+  }
+  
   wrapper.innerHTML = `
-        <div class="overflow-hidden h-full w-full relative ${selectedSize.aspect} img-skeleton-bg rounded-lg safari-rounded-fix">
-          <div class="img-skeleton absolute inset-0 z-10">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-          </div>
-          <a href="${photo.path}" 
-             data-fancybox="gallery-${photo.year}" 
-             data-exif='${exifData.replace(/'/g, "&apos;")}'
-             data-filename="${filename}"
-             class="block h-full w-full">
-            <img
-              alt="${photo.alt || ""}"
-              class="block h-full w-full object-cover object-center opacity-0 animate-fade-in transition duration-300 transform scale-100 img-hover-zoom img-loading rounded-lg"
-              src="${photo.thumbnail}"
-              loading="lazy"
-            />
-          </a>
-        </div>
-    `;
+    ${anchorsHtml}
+    <div class="overflow-hidden w-full h-full relative img-skeleton-bg rounded-lg safari-rounded-fix">
+      <div class="img-skeleton absolute inset-0 z-10">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <a href="javascript:;" 
+         data-src="${photo.path}"
+         data-index="${photo.waterfallIndex}"
+         data-exif='${exifData.replace(/'/g, "&apos;")}'
+         data-filename="${filename}"
+         class="block w-full h-full gallery-item">
+        <img
+          alt="${photo.alt || ''}"
+          class="block w-full h-full object-cover object-center opacity-0 animate-fade-in transition duration-300 img-hover-zoom img-loading rounded-lg"
+          src="${photo.thumbnail}"
+          loading="lazy"
+        />
+      </a>
+    </div>
+  `;
+  
   return wrapper;
 }
 
@@ -788,6 +799,126 @@ function renderStarRating(rating) {
   }
   return stars;
 }
+
+// --- Waterfall Layout Implementation ---
+
+/**
+ * Get column count based on window width
+ */
+function getColumnCount() {
+  const width = window.innerWidth;
+  if (width >= 1200) return 5;  // Desktop
+  if (width >= 768) return 3;   // Tablet
+  return 2;                     // Mobile
+}
+
+/**
+ * Calculate photo height based on column width (optional, for estimation)
+ */
+function calculatePhotoHeight(photo, columnWidth) {
+  if (!photo.width || !photo.height) return 200; // Default fallback
+  const aspectRatio = photo.width / photo.height;
+  return columnWidth / aspectRatio;
+}
+
+/**
+ * Create waterfall layout data structure
+ * @param {Array} photos - Array of photo objects
+ * @param {number} columnCount - Number of columns
+ * @returns {Array} columns - Array of arrays, where each inner array contains photos for that column
+ */
+function createWaterfallLayout(photos, columnCount) {
+  const columnHeights = new Array(columnCount).fill(0);
+  const columns = Array.from({ length: columnCount }, () => []);
+  const gap = 8; // 0.5rem = 8px
+  
+  photos.forEach((photo) => {
+    // Find the shortest column
+    let minHeight = columnHeights[0];
+    let minIndex = 0;
+    
+    for (let i = 1; i < columnCount; i++) {
+      if (columnHeights[i] < minHeight) {
+        minHeight = columnHeights[i];
+        minIndex = i;
+      }
+    }
+    
+    // Add photo to the shortest column
+    columns[minIndex].push(photo);
+    
+    // Update column height (using estimated height)
+    // Note: We don't have exact column width here easily without DOM, 
+    // so we use aspect ratio to estimate relative height addition.
+    // Assuming a base width of 100 units.
+    const aspectRatio = (photo.width && photo.height) ? (photo.width / photo.height) : 1.5;
+    const estimatedHeight = 100 / aspectRatio; 
+    columnHeights[minIndex] += estimatedHeight + gap;
+  });
+  
+  return columns;
+}
+
+/**
+ * Generate mapping from Timeline keys to global photo indices
+ */
+function generateTimelineMapping(albums) {
+  const mapping = {};
+  let globalIndex = 0;
+  
+  albums.forEach(album => {
+    const photosByMonth = groupPhotosByMonth(album.photos);
+    const months = Object.keys(photosByMonth).sort((a, b) => b.localeCompare(a));
+    
+    months.forEach(month => {
+      const key = `${album.year}-${month}`;
+      mapping[key] = globalIndex;
+      globalIndex += photosByMonth[month].length;
+    });
+  });
+  
+  return mapping;
+}
+
+/**
+ * Scroll to timeline section
+ */
+function scrollToTimelineSection(year, month) {
+  const sectionId = `section-${year}-${month}`;
+  scrollToSection(sectionId);
+}
+
+/**
+ * Debounce function
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Handle resize event
+ */
+function handleResize() {
+  // Trigger a re-render of the gallery layout
+  // Since we don't have the albums data globally available easily, 
+  // we might need to reload or store it. 
+  // For now, let's just reload the page or re-fetch. 
+  // Better: Store albums in a global variable or re-fetch (cached).
+  // Re-fetching is safe as it's local JSON.
+  loadGallery();
+}
+
+// Add resize listener
+window.addEventListener('resize', debounce(handleResize, 300));
+
 
 /**
  * Extract tags from EXIF data
