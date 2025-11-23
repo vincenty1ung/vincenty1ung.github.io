@@ -138,12 +138,27 @@ async function loadGallery() {
               }
             },
             on: {
-              'closing': (fancybox) => {
-                 // Manually blur the active element to prevent "Blocked aria-hidden" warning
-                 // when Fancybox sets aria-hidden=true on the container while it still has focus.
-                 if (document.activeElement instanceof HTMLElement) {
+              'shouldClose': (fancybox, event) => {
+                 // Blur all focusable elements BEFORE the close process starts
+                 // This event fires before 'closing', giving us time to remove focus
+                 const container = fancybox.container;
+                 if (container) {
+                   const buttons = container.querySelectorAll('button, a, [tabindex]');
+                   buttons.forEach(btn => {
+                     if (btn instanceof HTMLElement) {
+                       btn.blur();
+                     }
+                   });
+                 }
+                 // Blur active element
+                 if (document.activeElement instanceof HTMLElement && 
+                     document.activeElement.closest('.fancybox__container')) {
                    document.activeElement.blur();
                  }
+                 // Force focus to body to ensure nothing in the modal has focus
+                 document.body.focus();
+                 // Return true to allow closing
+                 return true;
               },
               'Carousel.change': (fancybox, carousel, toIndex, fromIndex) => {
                 // Update metadata when slide changes
