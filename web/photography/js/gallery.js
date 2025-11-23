@@ -921,14 +921,17 @@ function debounce(func, wait) {
 /**
  * Handle resize event
  */
+let currentColumnCount = getColumnCount();
+
 function handleResize() {
-  // Trigger a re-render of the gallery layout
-  // Since we don't have the albums data globally available easily, 
-  // we might need to reload or store it. 
-  // For now, let's just reload the page or re-fetch. 
-  // Better: Store albums in a global variable or re-fetch (cached).
-  // Re-fetching is safe as it's local JSON.
-  loadGallery();
+  // Only reload if the column count actually changes
+  // This prevents unnecessary reloads on mobile when scrolling (browser UI changes trigger resize)
+  const newColumnCount = getColumnCount();
+  
+  if (newColumnCount !== currentColumnCount) {
+    currentColumnCount = newColumnCount;
+    loadGallery();
+  }
 }
 
 // Add resize listener
