@@ -9,7 +9,7 @@ build
 docker_mysql.session.sql
 
 # Photography images (stored in R2)
-web/photography/gallery_images/
+*gallery_images*
 scripts/.env
 scripts/migrate_photos.go
 *.bak
