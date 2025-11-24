@@ -156,6 +156,9 @@ async function loadGallery() {
             autoFocus: false,
             trapFocus: false,
             placeFocusBack: false,
+            Image: {
+              crossOrigin: "anonymous",
+            },
             Toolbar: {
               display: {
                 left: ["infobar"],
@@ -562,7 +565,7 @@ function createPhotoCard(photo, year, month) {
           alt="${photo.alt || ''}"
           class="block w-full h-full object-cover object-center opacity-0 animate-fade-in transition duration-300 img-hover-zoom img-loading rounded-lg"
           src="${photo.thumbnail}"
-          loading="lazy"
+          crossorigin="anonymous"
         />
       </a>
     </div>
@@ -572,26 +575,84 @@ function createPhotoCard(photo, year, month) {
 }
 
 function bindImageLoadEvents() {
-  document.querySelectorAll("img.img-loading").forEach(function (img) {
-    function hideSkeleton() {
-      let parent = img.closest(".img-skeleton-bg");
-      let skeleton = parent ? parent.querySelector(".img-skeleton") : null;
+  const checkAllImages = () => {
+    document.querySelectorAll("img.img-loading").forEach(function (img) {
+      // Check if already processed to avoid redundant work
+      if (img.dataset.loaded === "true") return;
 
-      img.classList.remove("img-loading");
-      img.classList.remove("opacity-0");
-      img.style.opacity = 1;
+      let isLoaded = false;
 
-      if (skeleton) {
-        skeleton.remove();
+      function hideSkeleton() {
+        if (isLoaded) return;
+        isLoaded = true;
+        img.dataset.loaded = "true"; // Mark as processed
+
+        let parent = img.closest(".img-skeleton-bg");
+        let skeleton = parent ? parent.querySelector(".img-skeleton") : null;
+
+        // Force reflow
+        void img.offsetWidth;
+
+        requestAnimationFrame(() => {
+          // Remove transition temporarily to force immediate render if needed
+          // img.style.transition = 'none'; 
+          
+          img.classList.remove("img-loading");
+          img.classList.remove("opacity-0");
+          
+          // Force styles directly
+          img.style.opacity = '1';
+          img.style.visibility = 'visible';
+          
+          if (skeleton) {
+            skeleton.remove();
+          }
+        });
       }
-    }
 
-    if (img.complete && img.naturalWidth > 0) {
-      hideSkeleton();
-    } else {
-      img.addEventListener("load", hideSkeleton);
-      img.addEventListener("error", hideSkeleton);
+      function checkImageLoaded() {
+        if (img.complete && img.naturalWidth > 0) {
+          hideSkeleton();
+          return true;
+        }
+        return false;
+      }
+
+      // Immediate check
+      if (checkImageLoaded()) return;
+
+      // Event listeners
+      img.addEventListener("load", hideSkeleton, { once: true });
+      img.addEventListener("error", hideSkeleton, { once: true });
+    });
+  };
+
+  // Run initial check
+  checkAllImages();
+
+  // Polling fallback (keep this for robustness)
+  let checks = 0;
+  const interval = setInterval(() => {
+    checkAllImages();
+    checks++;
+    if (checks > 50) clearInterval(interval);
+  }, 100);
+
+  // Re-check on visibility change (fixes tab switch issue)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      checkAllImages();
     }
+  });
+
+  // Re-check on page show (fixes back/forward cache issues)
+  window.addEventListener("pageshow", () => {
+    checkAllImages();
+  });
+  
+  // Global safety check after window load
+  window.addEventListener("load", () => {
+    setTimeout(checkAllImages, 500);
   });
 }
 

@@ -687,26 +687,74 @@
           if (el.getAttribute("src"))
             el.setAttribute("src", el.getAttribute("src").trim());
         });
-        document.querySelectorAll("img.img-loading").forEach(function (img) {
-          if (img.src) img.src = img.src.trim();
-          function hideSkeleton(evt) {
-            let parent = img.parentElement && img.parentElement.parentElement;
-            let skeleton = parent
-              ? parent.querySelector(".img-skeleton")
-              : null;
-            img.classList.remove("img-loading");
-            img.classList.remove("opacity-0");
-            if (img) img.style.opacity = 1;
-            if (skeleton) {
-              skeleton.remove();
+        const checkAllImages = () => {
+          document.querySelectorAll("img.img-loading").forEach(function (img) {
+            if (img.src) img.src = img.src.trim();
+            if (img.dataset.loaded === "true") return;
+            
+            let isLoaded = false;
+            
+            function hideSkeleton(evt) {
+              if (isLoaded) return;
+              isLoaded = true;
+              img.dataset.loaded = "true";
+              
+              let parent = img.parentElement && img.parentElement.parentElement;
+              let skeleton = parent
+                ? parent.querySelector(".img-skeleton")
+                : null;
+              
+              void img.offsetWidth;
+              
+              requestAnimationFrame(() => {
+                img.classList.remove("img-loading");
+                img.classList.remove("opacity-0");
+                if (img) {
+                  img.style.opacity = '1';
+                  img.style.visibility = 'visible';
+                }
+                if (skeleton) {
+                  skeleton.remove();
+                }
+              });
             }
+            
+            function checkImageLoaded() {
+              if (img.complete && img.naturalWidth > 0) {
+                hideSkeleton();
+                return true;
+              }
+              return false;
+            }
+            
+            if (checkImageLoaded()) return;
+            
+            img.addEventListener("load", hideSkeleton, { once: true });
+            img.addEventListener("error", hideSkeleton, { once: true });
+          });
+        };
+        
+        checkAllImages();
+        
+        let checks = 0;
+        const interval = setInterval(() => {
+          checkAllImages();
+          checks++;
+          if (checks > 50) clearInterval(interval);
+        }, 100);
+        
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") {
+            checkAllImages();
           }
-          if (img.complete && img.naturalWidth > 0) {
-            hideSkeleton();
-          } else {
-            img.addEventListener("load", hideSkeleton);
-            img.addEventListener("error", hideSkeleton);
-          }
+        });
+        
+        window.addEventListener("pageshow", () => {
+          checkAllImages();
+        });
+        
+        window.addEventListener("load", () => {
+          setTimeout(checkAllImages, 500);
         });
       });
     </script>

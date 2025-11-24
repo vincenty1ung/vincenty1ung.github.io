@@ -28,6 +28,7 @@
    but ensure they work here. The plan mentions keeping them. */
 .img-hover-zoom {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  will-change: transform;
 }
 
 .img-hover-zoom:hover {
