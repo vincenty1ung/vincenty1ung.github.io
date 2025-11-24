@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -231,7 +232,7 @@ func (r *R2Client) GetCDNUrl(key string) string {
 
 // getContentType determines the content type based on file extension
 func getContentType(filename string) string {
-	ext := filepath.Ext(filename)
+	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
 	case ".jpg", ".jpeg":
 		return "image/jpeg"
@@ -241,6 +242,20 @@ func getContentType(filename string) string {
 		return "image/webp"
 	case ".gif":
 		return "image/gif"
+	case ".heic", ".heif":
+		return "image/heic"
+	case ".avif":
+		return "image/avif"
+	case ".tiff", ".tif":
+		return "image/tiff"
+	case ".bmp":
+		return "image/bmp"
+	case ".svg":
+		return "image/svg+xml"
+	case ".ico":
+		return "image/x-icon"
+	case ".raw", ".arw", ".cr2", ".cr3", ".nef", ".dng", ".orf", ".rw2":
+		return "image/x-dcraw" // Generic RAW type, or application/octet-stream
 	default:
 		return "application/octet-stream"
 	}
