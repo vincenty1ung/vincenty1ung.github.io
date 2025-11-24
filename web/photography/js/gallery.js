@@ -194,6 +194,11 @@ async function loadGallery() {
                 const exif = item.exif;
                 const filename = item.filename;
                 
+                // Log current opened image index (only the actual displayed one)
+                const total = carousel.slides.length;
+                console.log('Carousel.change: 当前打开的图片索引:', toIndex);
+                console.log('Carousel.change: 显示:', `${toIndex + 1} / ${total}`);
+                
                 // We need to wait for the container to be ready or just update if it exists
                 const container = fancybox.container;
                 if (!container) return;
@@ -224,23 +229,49 @@ async function loadGallery() {
               'reveal': (fancybox, slide) => {
                  // Keep reveal for the initial open, as change might have fired before DOM was ready?
                  // Or just to be safe.
+
+                 const current = fancybox.getSlide();
+
+                 // 只处理当前正在显示的 slide
+                 if (slide.index !== current.index) return;
+
+                 console.log("reveal: 当前显示:", slide.filename);
                  const exif = slide.exif;
                  const filename = slide.filename;
                  if (!exif) return;
+
+                 const index = slide.index;
+                 const total = fancybox.carousel.slides.length;
+                 console.log('reveal: 当前索引:', index);
+                 console.log('reveal: 显示:', `${index + 1} / ${total}`);
                  
-                 const container = fancybox.container;
-                 const existingPanel = container.querySelector('.fancybox__metadata');
-                 // Only add if not already there (to avoid double add if change fired)
-                 if (!existingPanel) {
+                 try {
+                  const existingPanel = fancybox.container.querySelector('.fancybox__metadata');
+                  if (existingPanel) {
+                     console.log('existingPanel.remove()');
+                    existingPanel.remove();
+                  }
+                  
+                  if (exif) {
                     const metadataPanel = createMetadataPanel(exif, filename);
-                    container.appendChild(metadataPanel);
-                 } else {
-                    // If it exists, make sure it matches current slide?
-                    // The 'Carousel.change' should handle updates.
-                    // 'reveal' ensures it's there on first load.
-                 }
+                    fancybox.container.appendChild(metadataPanel);
+                  }
+                } catch (e) {
+                  console.error('Failed to update metadata panel:', e);
+                }
+              },
+              'done': (fancybox, slide) => {
+                //  const index = slide.index;
+                //  const total = fancybox.carousel.slides.length;
+                //  console.log('done: 当前索引:', index);
+                //  console.log('done: 显示:', `${index + 1} / ${total}`);
+                //  console.log("图片 URL:", slide.src);
               },
               destroy: (fancybox) => {
+                 const current = fancybox.getSlide();
+                 console.log("destroy: 当前显示:", current.filename);
+                 console.log("destroy: 当前索引:", current.index);
+
                 const container = fancybox.container;
                 if (container) {
                   container.classList.remove('has-metadata-panel');
