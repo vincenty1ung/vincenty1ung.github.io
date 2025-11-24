@@ -565,7 +565,6 @@ function createPhotoCard(photo, year, month) {
           alt="${photo.alt || ''}"
           class="block w-full h-full object-cover object-center opacity-0 animate-fade-in transition duration-300 img-hover-zoom img-loading rounded-lg"
           src="${photo.thumbnail}"
-          crossorigin="anonymous"
         />
       </a>
     </div>

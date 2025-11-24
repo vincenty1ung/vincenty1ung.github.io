@@ -259,8 +259,8 @@ func UpdatePhotosHandler() {
 				// Fix path to be relative to web/photography/index.html
 				// Current webPath: web/photography/gallery_images/2025/xxx.jpg
 				// Desired: gallery_images/2025/xxx.jpg
-				if strings.HasPrefix(webPath, WebPhotographyPrefix) {
-					webPath = strings.TrimPrefix(webPath, WebPhotographyPrefix)
+				if after, ok :=strings.CutPrefix(webPath, WebPhotographyPrefix); ok  {
+					webPath = after
 				}
 
 				// Generate filename without extension for R2 keys
