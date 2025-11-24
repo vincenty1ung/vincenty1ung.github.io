@@ -118,15 +118,16 @@
 /* Rating Stars */
 .metadata-rating {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .metadata-rating-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
-  margin-bottom: 4px;
-  display: block;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  display: inline-block;
+  font-weight: 500;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -136,7 +137,7 @@
 }
 
 .metadata-stars {
-  display: flex;
+  display: inline-flex;
   gap: 2px;
 }
 
@@ -158,21 +159,30 @@
 /* Tags */
 .metadata-tags {
   margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .metadata-tags-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
-  margin-bottom: 8px;
-  display: block;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  display: inline-block;
+  font-weight: 500;
+  flex-shrink: 0;
+  padding-top: 4px;
 }
 
 @media (prefers-color-scheme: dark) {
   .metadata-tags-label {
     color: #9ca3af;
   }
+}
+
+.metadata-tags-content {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .metadata-tag {
@@ -182,8 +192,6 @@
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
-  margin-right: 6px;
-  margin-bottom: 6px;
   font-weight: 500;
 }
 
@@ -200,15 +208,13 @@
 }
 
 .metadata-section-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #6b7280;
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -218,7 +224,11 @@
 }
 
 .metadata-section-icon {
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Info Row */
@@ -258,7 +268,7 @@
 
 .metadata-row-value {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   color: #111827 !important;
   text-align: right;
   word-break: break-word;

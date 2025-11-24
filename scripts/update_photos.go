@@ -259,7 +259,7 @@ func UpdatePhotosHandler() {
 				// Fix path to be relative to web/photography/index.html
 				// Current webPath: web/photography/gallery_images/2025/xxx.jpg
 				// Desired: gallery_images/2025/xxx.jpg
-				if after, ok :=strings.CutPrefix(webPath, WebPhotographyPrefix); ok  {
+				if after, ok := strings.CutPrefix(webPath, WebPhotographyPrefix); ok {
 					webPath = after
 				}
 
@@ -421,6 +421,8 @@ func UpdatePhotosHandler() {
 		// Shooting Mode
 		"WhiteBalance": true, "ExposureProgram": true, "ExposureMode": true, "MeteringMode": true, "Flash": true,
 		"SceneCaptureType": true,
+		// GPS Location
+		"GPSLatitude": true, "GPSLongitude": true, "GPSAltitude": true, "GPSLatitudeRef": true, "GPSLongitudeRef": true,
 		// Date (for reference/debugging if needed, though we parse it separately)
 		"DateTimeOriginal": true, "CreateDate": true, "OffsetTimeOriginal": true, "OffsetTime": true,
 	}
