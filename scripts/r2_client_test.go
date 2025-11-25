@@ -366,7 +366,7 @@ func TestUploadFile(t *testing.T) {
 		client, err := NewR2Client(config)
 		assert.NoError(t, err)
 
-		err = client.UploadFile("/nonexistent/file.jpg", "test/file.jpg")
+		err = client.UploadFile("/nonexistent/file.jpg", "test/file.jpg", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to read file")
 	})
@@ -428,7 +428,7 @@ func TestR2ClientIntegration(t *testing.T) {
 	testKey := "test/integration_test.txt"
 
 	// Upload
-	err = client.UploadFile(tmpFile, testKey)
+	err = client.UploadFile(tmpFile, testKey, "")
 	if err != nil {
 		t.Logf("Upload failed (may be expected if R2 is not configured): %v", err)
 	}

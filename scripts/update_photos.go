@@ -275,7 +275,8 @@ func UpdatePhotosHandler() {
 						"%s%s%s", r2Client.config.BasePrefix, r2Client.config.OriginalPrefix, filename,
 					)
 					if !r2Client.CheckFileExists(originalKey) {
-						if err := r2Client.UploadFile(path, originalKey); err != nil {
+						// Cache-Control: public, max-age=31536000 (1 year) for immutable images
+						if err := r2Client.UploadFile(path, originalKey, "public, max-age=31536000"); err != nil {
 							fmt.Printf("❌ Failed to upload original %s: %v\n", filename, err)
 							// Fallback to local path
 							finalPath = webPath
@@ -301,7 +302,8 @@ func UpdatePhotosHandler() {
 							finalThumbnail = thumbnailBase + filenameNoExt + ".webp"
 						} else {
 							// Upload thumbnail
-							if err := r2Client.UploadBytes(thumbnailData, thumbnailKey, "image/webp"); err != nil {
+							// Cache-Control: public, max-age=31536000 (1 year) for immutable thumbnails
+							if err := r2Client.UploadBytes(thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000"); err != nil {
 								fmt.Printf("❌ Failed to upload thumbnail for %s: %v\n", filename, err)
 								finalThumbnail = thumbnailBase + filenameNoExt + ".webp"
 							} else {
@@ -311,6 +313,8 @@ func UpdatePhotosHandler() {
 						}
 					} else {
 						fmt.Printf("→ Thumbnail already exists: %s\n", filename)
+						//r2Client.UploadBytes( thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000")
+						// 想更新数据
 						finalThumbnail = r2Client.GetCDNUrl(thumbnailKey)
 					}
 				} else {
@@ -504,6 +508,18 @@ func UpdatePhotosHandler() {
 	if err != nil {
 		fmt.Printf("Error writing to %s: %v\n", outputFilePath, err)
 		os.Exit(1)
+	}
+
+	// Upload photos.json to R2
+	if r2Client != nil {
+		jsonKey := fmt.Sprintf("%sphotos.json", r2Client.config.BasePrefix)
+		fmt.Printf("Uploading photos.json to R2 (%s)...\n", jsonKey)
+		// Cache-Control: no-cache to force revalidation
+		if err := r2Client.UploadBytes(jsonData, jsonKey, "application/json", "no-cache"); err != nil {
+			fmt.Printf("❌ Failed to upload photos.json to R2: %v\n", err)
+		} else {
+			fmt.Printf("✓ Uploaded photos.json to R2: %s\n", r2Client.GetCDNUrl(jsonKey))
+		}
 	}
 
 	totalPhotos := 0

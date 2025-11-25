@@ -146,7 +146,7 @@ func (r *R2Client) CheckFileExists(key string) bool {
 }
 
 // UploadFile uploads a file to R2
-func (r *R2Client) UploadFile(localPath, key string) error {
+func (r *R2Client) UploadFile(localPath, key, cacheControl string) error {
 	ctx := context.Background()
 
 	// Read file
@@ -159,14 +159,18 @@ func (r *R2Client) UploadFile(localPath, key string) error {
 	contentType := getContentType(localPath)
 
 	// Upload to R2
-	_, err = r.client.PutObject(
-		ctx, &s3.PutObjectInput{
-			Bucket:      aws.String(r.config.Bucket),
-			Key:         aws.String(key),
-			Body:        bytes.NewReader(fileData),
-			ContentType: aws.String(contentType),
-		},
-	)
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(r.config.Bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(fileData),
+		ContentType: aws.String(contentType),
+	}
+
+	if cacheControl != "" {
+		input.CacheControl = aws.String(cacheControl)
+	}
+
+	_, err = r.client.PutObject(ctx, input)
 
 	if err != nil {
 		return fmt.Errorf("failed to upload to R2: %w", err)
@@ -176,17 +180,21 @@ func (r *R2Client) UploadFile(localPath, key string) error {
 }
 
 // UploadBytes uploads byte data to R2
-func (r *R2Client) UploadBytes(data []byte, key, contentType string) error {
+func (r *R2Client) UploadBytes(data []byte, key, contentType, cacheControl string) error {
 	ctx := context.Background()
 
-	_, err := r.client.PutObject(
-		ctx, &s3.PutObjectInput{
-			Bucket:      aws.String(r.config.Bucket),
-			Key:         aws.String(key),
-			Body:        bytes.NewReader(data),
-			ContentType: aws.String(contentType),
-		},
-	)
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(r.config.Bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String(contentType),
+	}
+
+	if cacheControl != "" {
+		input.CacheControl = aws.String(cacheControl)
+	}
+
+	_, err := r.client.PutObject(ctx, input)
 
 	if err != nil {
 		return fmt.Errorf("failed to upload to R2: %w", err)

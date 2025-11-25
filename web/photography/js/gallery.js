@@ -111,7 +111,8 @@ async function loadGallery() {
   }
 
   try {
-    const response = await fetch("photos.json");
+    // const response = await fetch("photos.json");
+    const response = await fetch("https://cdn-photography-img-vincent.chyu.org/pages/photos.json");
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
