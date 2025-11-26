@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -184,17 +185,13 @@ func UpdatePhotosHandler() {
 	// 1. Read existing photos.json to preserve metadata and identify files to delete
 	existingAlbums := make(map[string]map[string]Photo)
 	var existingAllPhotos []Photo // Keep track of all existing photos for deletion comparison
+	var existingContent []byte    // Store content for comparison
+
 	if _, err := os.Stat(outputFilePath); err == nil {
-		// Create backup of existing photos.json
+		// Read existing photos.json
 		content, err := os.ReadFile(outputFilePath)
 		if err == nil {
-			backupPath := outputFilePath + "." + time.Now().Format("20060102_150405") + ".bak"
-			if err := os.WriteFile(backupPath, content, 0644); err != nil {
-				fmt.Printf("Warning: Could not create backup of %s: %v\n", outputFilePath, err)
-			} else {
-				fmt.Printf("✓ Backup created: %s\n", backupPath)
-			}
-
+			existingContent = content
 			var albums []YearAlbum
 			if err := json.Unmarshal(content, &albums); err == nil {
 				for _, album := range albums {
@@ -281,11 +278,11 @@ func UpdatePhotosHandler() {
 							// Fallback to local path
 							finalPath = webPath
 						} else {
-							fmt.Printf("✓ Uploaded original: %s\n", filename)
+							fmt.Printf("✓ Uploaded original: %s, %s\n", filename, originalKey)
 							finalPath = r2Client.GetCDNUrl(originalKey)
 						}
 					} else {
-						fmt.Printf("→ Original already exists: %s\n", filename)
+						fmt.Printf("→ Original already exists: %s, %s\n", filename, originalKey)
 						finalPath = r2Client.GetCDNUrl(originalKey)
 					}
 
@@ -307,12 +304,12 @@ func UpdatePhotosHandler() {
 								fmt.Printf("❌ Failed to upload thumbnail for %s: %v\n", filename, err)
 								finalThumbnail = thumbnailBase + filenameNoExt + ".webp"
 							} else {
-								fmt.Printf("✓ Generated and uploaded thumbnail: %s\n", filename)
+								fmt.Printf("✓ Generated and uploaded thumbnail: %s, %s\n", filename, thumbnailKey)
 								finalThumbnail = r2Client.GetCDNUrl(thumbnailKey)
 							}
 						}
 					} else {
-						fmt.Printf("→ Thumbnail already exists: %s\n", filename)
+						fmt.Printf("→ Thumbnail already exists: %s,%s\n", filename, thumbnailKey)
 						//r2Client.UploadBytes( thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000")
 						// 想更新数据
 						finalThumbnail = r2Client.GetCDNUrl(thumbnailKey)
@@ -502,6 +499,24 @@ func UpdatePhotosHandler() {
 	if err != nil {
 		fmt.Printf("Error marshaling JSON: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Check if content has changed
+	if bytes.Equal(existingContent, jsonData) {
+		fmt.Println("✓ photos.json has not changed. Skipping backup, file write, and R2 upload.")
+		return
+	}
+
+	// Content has changed, proceed with updates
+
+	// Create backup of existing file if it exists
+	if len(existingContent) > 0 {
+		backupPath := outputFilePath + "." + time.Now().Format("20060102_150405") + ".bak"
+		if err := os.WriteFile(backupPath, existingContent, 0644); err != nil {
+			fmt.Printf("Warning: Could not create backup of %s: %v\n", outputFilePath, err)
+		} else {
+			fmt.Printf("✓ Backup created: %s\n", backupPath)
+		}
 	}
 
 	err = os.WriteFile(outputFilePath, jsonData, 0644)

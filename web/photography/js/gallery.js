@@ -1000,13 +1000,15 @@ function createWaterfallLayout(photos, columnCount) {
     // Add photo to the shortest column
     columns[minIndex].push(photo);
     
-    // Update column height (using estimated height)
-    // Note: We don't have exact column width here easily without DOM, 
-    // so we use aspect ratio to estimate relative height addition.
-    // Assuming a base width of 100 units.
+    // Update column height using aspect ratio
+    // Since all photos in a column have the same width (flex: 1),
+    // we use the inverse of aspect ratio as the relative height weight.
+    // This ensures the estimated relative heights match actual CSS rendering.
     const aspectRatio = (photo.width && photo.height) ? (photo.width / photo.height) : 1.5;
-    const estimatedHeight = 100 / aspectRatio; 
-    columnHeights[minIndex] += estimatedHeight + gap;
+    // Height relative to width: if width is W, height is W / aspectRatio
+    // We use a normalized value (1000) for better precision
+    const relativeHeight = 1000 / aspectRatio;
+    columnHeights[minIndex] += relativeHeight + gap;
   });
   
   return columns;
