@@ -718,42 +718,75 @@
     <!-- 加载年份内容的脚本 -->
     <!-- <script src="dist/loadYears.js"></script> -->
     <script src="js/gallery.js?v=20251122003"></script>
-    <!-- 加载 cplayer 脚本 -->
-    <script src="dist/cplayer.min.js"></script>
+    <!-- 音乐播放器按需加载 -->
     <script>
-      // 音乐播放器延迟加载，保证页面先出现
-      function initMusicPlayer() {
-        let app2 = document.getElementById("app2");
-        let player = new cplayer({
-          element: app2,
-          playlist: [
-            {
-              src: "src/music/music-02.m4a",
-              poster: "src/music/cover-02.jpg",
-              name: "Welcome Home, Son",
-              artist: "Radical Face",
-              lyric: "",
-              sublyric: "",
-            },
-            {
-              src: "src/music/music-01.m4a",
-              poster: "src/music/cover-01.jpg",
-              name: "旅途愉快",
-              artist: "寸铁",
-              lyric: "",
-              sublyric: "",
-            },
-          ],
+      // 音乐播放器按需加载：只在hover时加载，避免阻塞页面渲染
+      (function() {
+        let cplayerLoaded = false;
+        let cplayerInitialized = false;
+        
+        function initMusicPlayer() {
+          if (cplayerInitialized) return;
+          cplayerInitialized = true;
+          
+          let app2 = document.getElementById("app2");
+          let player = new cplayer({
+            element: app2,
+            playlist: [
+              {
+                src: "src/music/music-02.m4a",
+                poster: "src/music/cover-02.jpg",
+                name: "Welcome Home, Son",
+                artist: "Radical Face",
+                lyric: "",
+                sublyric: "",
+              },
+              {
+                src: "src/music/music-01.m4a",
+                poster: "src/music/cover-01.jpg",
+                name: "旅途愉快",
+                artist: "寸铁",
+                lyric: "",
+                sublyric: "",
+              },
+            ],
+          });
+          player.mode = "listloop";
+          var audioLoading = document.getElementById("audio-loading");
+          if (audioLoading) audioLoading.style.display = "none";
+        }
+        
+        function loadCplayer() {
+          if (cplayerLoaded) return;
+          cplayerLoaded = true;
+          
+          const script = document.createElement('script');
+          script.src = 'dist/cplayer.min.js';
+          script.onload = function() {
+            initMusicPlayer();
+          };
+          script.onerror = function() {
+            console.error('Failed to load cplayer.min.js');
+            var audioLoading = document.getElementById("audio-loading");
+            if (audioLoading) {
+              audioLoading.innerHTML = '<span style="color: #999;">音乐播放器加载失败</span>';
+            }
+          };
+          document.body.appendChild(script);
+        }
+        
+        // 监听hover事件，首次hover时加载播放器
+        document.addEventListener('DOMContentLoaded', function() {
+          const headerContainer = document.querySelector('.portfolio-header-container');
+          if (headerContainer) {
+            // Desktop: mouseenter
+            headerContainer.addEventListener('mouseenter', loadCplayer, { once: true });
+            // Mobile: touchstart or click
+            headerContainer.addEventListener('touchstart', loadCplayer, { once: true, passive: true });
+            headerContainer.addEventListener('click', loadCplayer, { once: true });
+          }
         });
-        player.mode = "listloop";
-        var audioLoading = document.getElementById("audio-loading");
-        if (audioLoading) audioLoading.style.display = "none";
-      }
-      if (window.requestIdleCallback) {
-        window.requestIdleCallback(initMusicPlayer);
-      } else {
-        window.setTimeout(initMusicPlayer, 0);
-      }
+      })();
     </script>
 
     <script>
