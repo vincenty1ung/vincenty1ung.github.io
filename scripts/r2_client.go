@@ -7,12 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/joho/godotenv"
 )
+
+const R2RequestTimeout = 120 * time.Second
 
 // R2Config holds the configuration for Cloudflare R2
 type R2Config struct {
@@ -135,7 +139,9 @@ func NewR2Client(config *R2Config) (*R2Client, error) {
 
 // CheckFileExists checks if a file exists in R2
 func (r *R2Client) CheckFileExists(key string) bool {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), R2RequestTimeout)
+	defer cancel()
+
 	_, err := r.client.HeadObject(
 		ctx, &s3.HeadObjectInput{
 			Bucket: aws.String(r.config.Bucket),
@@ -147,7 +153,8 @@ func (r *R2Client) CheckFileExists(key string) bool {
 
 // UploadFile uploads a file to R2
 func (r *R2Client) UploadFile(localPath, key, cacheControl string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), R2RequestTimeout)
+	defer cancel()
 
 	// Read file
 	fileData, err := os.ReadFile(localPath)
@@ -181,7 +188,8 @@ func (r *R2Client) UploadFile(localPath, key, cacheControl string) error {
 
 // UploadBytes uploads byte data to R2
 func (r *R2Client) UploadBytes(data []byte, key, contentType, cacheControl string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), R2RequestTimeout)
+	defer cancel()
 
 	input := &s3.PutObjectInput{
 		Bucket:      aws.String(r.config.Bucket),
@@ -205,7 +213,9 @@ func (r *R2Client) UploadBytes(data []byte, key, contentType, cacheControl strin
 
 // DeleteObject del data to R2
 func (r *R2Client) DeleteObject(key string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), R2RequestTimeout)
+	defer cancel()
+
 	_, err := r.client.DeleteObject(
 		ctx, &s3.DeleteObjectInput{
 			Bucket:                    aws.String(r.config.Bucket),
@@ -224,6 +234,47 @@ func (r *R2Client) DeleteObject(key string) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to delete object to R2: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteObjects deletes multiple objects from R2 in a batch
+func (r *R2Client) DeleteObjects(keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), R2RequestTimeout)
+	defer cancel()
+
+	var objects []types.ObjectIdentifier
+	for _, key := range keys {
+		objects = append(objects, types.ObjectIdentifier{
+			Key: aws.String(key),
+		})
+	}
+
+	// S3 batch delete limit is 1000
+	batchSize := 1000
+	for i := 0; i < len(objects); i += batchSize {
+		end := i + batchSize
+		if end > len(objects) {
+			end = len(objects)
+		}
+
+		batch := objects[i:end]
+		_, err := r.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(r.config.Bucket),
+			Delete: &types.Delete{
+				Objects: batch,
+				Quiet:   aws.Bool(true),
+			},
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to delete batch objects from R2: %w", err)
+		}
 	}
 
 	return nil

@@ -15,3 +15,4 @@ scripts/migrate_photos.go
 *.bak
 web/photography/photos.json
 .agent/
+*test.go

@@ -2,15 +2,17 @@ package scripts
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -34,16 +36,10 @@ const (
 	DateFormatDefault = "%s-01-01"
 	DefaultMonth      = "01"
 	DefaultDay        = "01"
-)
 
-// TODO: 后续会识别到照片之后，会增加功能，关于上传 R2 的这个内容服务器，然后自动上传照片到指定的目录，最后换回链接。最好是有能处理缩略图的功能。
-// TODO: 目前是将照片拷贝到年份下，这属于新增的照片。然后会调用 `update_photos` 的这个函数，读取到目录下的所有照片，并检查照片是否有上传到 R2。
-// TODO: 如果没有上传是一回事；如果有上传，则可以直接使用链接。如果没有上传，要先检查，检查后如果仍然没有上传，则会把当前的照片处理成一张缩略图。
-// TODO: 然后将缩略图上传到指定目录下。最后，换回链接后，将换回的链接和照片一起保存 保存到 `photos.json` 的 JSON 文件中，供前端的 JS 识别使用。
-// TODO: 目前只有缩略图是我手动上传到 R2 服务器。未来会使用到这个更新的脚本，更新的脚本会自动把目录里的原图上传到 R2 服务器，并且上传缩略图到 R2 服务器。
-// TODO: 在 PhotoJSON 的文件中使用的都是 R2 服务器的图片地址，而不是用到仓库里的图片。后续会把仓库中的图片进行清理，而不使用仓库中的图片。@gallery_images 目录下的图片，不上传git仓库
-// TODO: R2的配置在当前目录下的 `.env` 文件中。
-// TODO: 接口文档:https://developers.cloudflare.com/r2/api/s3/api/
+	// Concurrency
+	MaxConcurrency = 10
+)
 
 // Photo represents a single photo entry
 type Photo struct {
@@ -56,7 +52,9 @@ type Photo struct {
 	Date      string                 `json:"date"` // YYYY-MM-DD for sorting
 	Width     int                    `json:"width,omitempty"`
 	Height    int                    `json:"height,omitempty"`
-	Exif      map[string]interface{} `json:"exif,omitempty"` // Complete EXIF data from exiftool
+	Exif      map[string]interface{} `json:"exif,omitempty"` // Complete EXIF data
+	Hash      string                 `json:"hash,omitempty"` // File hash for caching
+	Timestamp int64                  `json:"-"`              // Timestamp for sorting
 }
 
 // YearAlbum represents a collection of photos for a specific year
@@ -65,89 +63,24 @@ type YearAlbum struct {
 	Photos []Photo `json:"photos"`
 }
 
-// ExifData represents the complete EXIF data returned by exiftool
-// Using map to capture all fields dynamically
-type ExifData map[string]interface{}
-
-// extractDateFromExif uses exiftool to extract EXIF data from a photo
-// Returns year, month, full date string (YYYY-MM-DD), and complete EXIF data
-func extractDateFromExif(filePath string) (
-	year, month, dateStr string, imageWidth, imageHeight int, exifData ExifData, err error,
-) {
-	// Run exiftool -json <filepath>
-	cmd := exec.Command("exiftool", "-json", filePath)
-	output, err := cmd.Output()
-	if err != nil {
-		return "", "", "", 0, 0, nil, fmt.Errorf("exiftool command failed: %w", err)
-	}
-
-	// Parse JSON output
-	var exifDataArray []ExifData
-	if err := json.Unmarshal(output, &exifDataArray); err != nil {
-		return "", "", "", 0, 0, nil, fmt.Errorf("failed to parse exiftool JSON: %w", err)
-	}
-
-	if len(exifDataArray) == 0 {
-		return "", "", "", 0, 0, nil, fmt.Errorf("no EXIF data found")
-	}
-
-	exifData = exifDataArray[0]
-
-	// Try DateTimeOriginal first, fallback to CreateDate
-	var dateTimeStr string
-	if val, ok := exifData["DateTimeOriginal"].(string); ok && val != "" {
-		dateTimeStr = val
-	} else if val, ok := exifData["CreateDate"].(string); ok && val != "" {
-		dateTimeStr = val
-	}
-
-	if val, ok := exifData["ImageWidth"].(float64); ok && val > 0 {
-		imageWidth = int(val)
-	} else if val, ok := exifData["ExifImageWidth"].(float64); ok && val > 0 {
-		imageWidth = int(val)
-	}
-	if val, ok := exifData["ImageHeight"].(float64); ok && val > 0 {
-		imageHeight = int(val)
-	} else if val, ok := exifData["ExifImageHeight"].(float64); ok && val > 0 {
-		imageHeight = int(val)
-	}
-
-	if dateTimeStr == "" {
-		return "", "", "", 0, 0, exifData, fmt.Errorf("no date information in EXIF")
-	}
-
-	// Parse the date string (format: "2025:11:02 13:22:57")
-	// Try multiple formats
-	var parsedTime time.Time
-	formats := []string{
-		"2006:01:02 15:04:05",
-		"2006:01:02",
-	}
-
-	for _, format := range formats {
-		parsedTime, err = time.Parse(format, dateTimeStr)
-		if err == nil {
-			break
-		}
-	}
-
-	if err != nil {
-		return "", "", "", 0, 0, exifData, fmt.Errorf("failed to parse date '%s': %w", dateTimeStr, err)
-	}
-
-	year = fmt.Sprintf("%04d", parsedTime.Year())
-	month = fmt.Sprintf("%02d", parsedTime.Month())
-	dateStr = parsedTime.Format("2006-01-02")
-
-	return year, month, dateStr, imageWidth, imageHeight, exifData, nil
+// PhotoProcessor handles the processing of photos
+type PhotoProcessor struct {
+	RootDir        string
+	ImgDirPath     string
+	R2Client       *R2Client
+	ThumbnailBase  string
+	ExistingPhotos map[string]Photo // Key: Filename
+	NewPhotos      []Photo
+	Mutex          sync.Mutex
+	DateRegex      *regexp.Regexp
 }
-func UpdatePhotosHandler() {
+
+// NewPhotoProcessor creates a new PhotoProcessor
+func NewPhotoProcessor() (*PhotoProcessor, error) {
 	rootDir, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("Error getting current working directory: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("error getting current working directory: %w", err)
 	}
-	fmt.Printf("Current working directory: %s\n", rootDir)
 
 	// Initialize R2 client
 	var r2Client *R2Client
@@ -157,70 +90,231 @@ func UpdatePhotosHandler() {
 	if err != nil {
 		fmt.Printf("⚠ Warning: R2 configuration load failed: %v\n", err)
 		fmt.Println("Using default/empty configuration...")
-		// Set default or empty values if config load fails
-		thumbnailBase = ""
 	} else {
-		// Construct thumbnail base URL from config
 		thumbnailBase = fmt.Sprintf(
 			"%s/%s%s",
 			strings.TrimRight(r2Config.CDNUrl, "/"),
 			r2Config.BasePrefix,
 			r2Config.ThumbnailPrefix,
 		)
-
-		fmt.Printf("✓ Configuration loaded. Thumbnail base: %s\n", thumbnailBase)
-
 		r2Client, err = NewR2Client(r2Config)
 		if err != nil {
-			fmt.Printf("⚠ Warning: Failed to create R2 client (expected if no credentials): %v\n", err)
-			fmt.Println("Continuing without R2 upload...")
+			fmt.Printf("⚠ Warning: Failed to create R2 client: %v\n", err)
 		} else {
 			fmt.Println("✓ R2 client initialized successfully")
 		}
 	}
 
-	imgDirPath := filepath.Join(rootDir, ImgDir)
-	outputFilePath := filepath.Join(rootDir, OutputFile)
+	return &PhotoProcessor{
+		RootDir:        rootDir,
+		ImgDirPath:     filepath.Join(rootDir, ImgDir),
+		R2Client:       r2Client,
+		ThumbnailBase:  thumbnailBase,
+		ExistingPhotos: make(map[string]Photo),
+		DateRegex:      regexp.MustCompile(`DSC_(\d{4})-(\d{2})-(\d{2})`),
+	}, nil
+}
 
-	// 1. Read existing photos.json to preserve metadata and identify files to delete
-	existingAlbums := make(map[string]map[string]Photo)
-	var existingAllPhotos []Photo // Keep track of all existing photos for deletion comparison
-	var existingContent []byte    // Store content for comparison
-
+// LoadExistingMetadata loads existing photos.json
+func (p *PhotoProcessor) LoadExistingMetadata() ([]byte, error) {
+	var content []byte
+	outputFilePath := filepath.Join(p.RootDir, OutputFile)
 	if _, err := os.Stat(outputFilePath); err == nil {
-		// Read existing photos.json
-		content, err := os.ReadFile(outputFilePath)
-		if err == nil {
-			existingContent = content
-			var albums []YearAlbum
-			if err := json.Unmarshal(content, &albums); err == nil {
-				for _, album := range albums {
-					if existingAlbums[album.Year] == nil {
-						existingAlbums[album.Year] = make(map[string]Photo)
+		content, err = os.ReadFile(outputFilePath)
+		if err != nil {
+			return nil, err
+		}
+
+		var albums []YearAlbum
+		if err := json.Unmarshal(content, &albums); err == nil {
+			for _, album := range albums {
+				for _, photo := range album.Photos {
+					// Restore Timestamp from Exif if available
+					if val, ok := photo.Exif["DateTimeOriginal"]; ok {
+						if dateStr, ok := val.(string); ok {
+							if t, err := time.Parse("2006:01:02 15:04:05", dateStr); err == nil {
+								photo.Timestamp = t.Unix()
+							}
+						}
 					}
-					for _, p := range album.Photos {
-						existingAlbums[album.Year][p.Filename] = p
-						existingAllPhotos = append(existingAllPhotos, p)
-					}
+					p.ExistingPhotos[photo.Filename] = photo
 				}
-				fmt.Printf(
-					"Loaded existing metadata for %d years with %d total photos.\n", len(albums),
-					len(existingAllPhotos),
-				)
 			}
+			fmt.Printf("🟢 Loaded existing metadata for %d photos.\n", len(p.ExistingPhotos))
+		}
+	}
+	return content, nil
+}
+
+// calculateFileHash calculates MD5 hash of a file
+func calculateFileHash(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Println("Failed to close file.")
+		}
+	}(file)
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+// processPhoto processes a single photo
+func (p *PhotoProcessor) processPhoto(path string, yearDirName string) (Photo, error) {
+	filename := filepath.Base(path)
+	filenameNoExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	// Calculate hash
+	hash, err := calculateFileHash(path)
+	if err != nil {
+		return Photo{}, fmt.Errorf("failed to calculate hash: %w", err)
+	}
+
+	// Check if photo exists and hash matches
+	if existing, ok := p.ExistingPhotos[filename]; ok {
+		// 第一次是相同的
+		if existing.Hash == hash {
+			// if true {
+			// 	existing.Hash = hash
+			// Photo hasn't changed, return existing data
+			// But ensure path is correct (in case of URL changes, though hash check implies content same)
+			// We might want to re-verify R2 existence if we were being very strict, but for perf we skip
+			// fmt.Printf("Skipping unchanged photo: %s\n", filename)
+			return existing, nil
 		}
 	}
 
-	// Regex to parse date from filename: DSC_YYYY-MM-DD_...
-	dateRegex := regexp.MustCompile(`DSC_(\d{4})-(\d{2})-(\d{2})`)
+	// New or modified photo
+	fmt.Printf("🟢 Processing %s...\n", filename)
 
-	// 2. Scan directories
-	var newAlbums []YearAlbum
+	relPath, _ := filepath.Rel(p.RootDir, path)
+	webPath := strings.ReplaceAll(relPath, "\\", "/")
+	if after, ok := strings.CutPrefix(webPath, WebPhotographyPrefix); ok {
+		webPath = after
+	}
 
-	entries, err := os.ReadDir(imgDirPath)
+	var finalPath, finalThumbnail string
+
+	// R2 Upload Logic
+	if p.R2Client != nil {
+		// 1. Upload Original
+		originalKey := fmt.Sprintf("%s%s%s", p.R2Client.config.BasePrefix, p.R2Client.config.OriginalPrefix, filename)
+		// We could check existence, but since hash changed or it's new, we should probably upload
+		// Or we can check if it exists to avoid re-uploading if only local metadata changed?
+		// For simplicity/safety, if hash changed, we upload.
+
+		if err := p.R2Client.UploadFile(path, originalKey, "public, max-age=31536000"); err != nil {
+			fmt.Printf("❌ Failed to upload original %s: %v\n", filename, err)
+			finalPath = webPath
+		} else {
+			finalPath = p.R2Client.GetCDNUrl(originalKey)
+		}
+
+		// 2. Upload Thumbnail
+		thumbnailKey := fmt.Sprintf(
+			"%s%s%s%s", p.R2Client.config.BasePrefix, p.R2Client.config.ThumbnailPrefix, filenameNoExt, ExtWebP,
+		)
+		thumbnailData, err := GenerateThumbnail(path, DefaultThumbnailConfig())
+		if err != nil {
+			fmt.Printf("❌ Failed to generate thumbnail for %s: %v\n", filename, err)
+			finalThumbnail = p.ThumbnailBase + filenameNoExt + ".webp"
+		} else {
+			if err := p.R2Client.UploadBytes(
+				thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000",
+			); err != nil {
+				fmt.Printf("❌ Failed to upload thumbnail for %s: %v\n", filename, err)
+				finalThumbnail = p.ThumbnailBase + filenameNoExt + ".webp"
+			} else {
+				finalThumbnail = p.R2Client.GetCDNUrl(thumbnailKey)
+			}
+		}
+	} else {
+		finalPath = webPath
+		finalThumbnail = p.ThumbnailBase + filenameNoExt + ".webp"
+	}
+
+	// Extract EXIF using configured extractor
+	exifData, width, height, dateTaken, err := GetExifExtractor().Extract(path)
+
+	var photoYear, month, dateStr string
+	var timestamp int64
+
+	if err == nil && !dateTaken.IsZero() {
+		photoYear = fmt.Sprintf("%04d", dateTaken.Year())
+		month = fmt.Sprintf("%02d", dateTaken.Month())
+		dateStr = dateTaken.Format("2006-01-02")
+		timestamp = dateTaken.Unix()
+	} else {
+		// Fallback to filename
+		matches := p.DateRegex.FindStringSubmatch(filename)
+		if len(matches) >= 4 {
+			photoYear = matches[1]
+			month = matches[2]
+			dateStr = fmt.Sprintf(DateFormatYMD, matches[1], matches[2], matches[3])
+		} else {
+			photoYear = yearDirName
+			month = DefaultMonth
+			dateStr = fmt.Sprintf(DateFormatDefault, yearDirName)
+		}
+		if err != nil {
+			fmt.Printf("⚠ EXIF extraction failed for %s: %v\n", filename, err)
+		}
+	}
+
+	// Create Photo struct
+	photo := Photo{
+		Filename:  filename,
+		Path:      finalPath,
+		Thumbnail: finalThumbnail,
+		Alt:       "", // Preserve alt if exists?
+		Year:      photoYear,
+		Month:     month,
+		Date:      dateStr,
+		Width:     width,
+		Height:    height,
+		Exif:      exifData,
+		Hash:      hash,
+		Timestamp: timestamp,
+	}
+
+	// Preserve Alt from existing if available
+	if existing, ok := p.ExistingPhotos[filename]; ok {
+		photo.Alt = existing.Alt
+	}
+
+	return photo, nil
+}
+
+func UpdatePhotosHandler() {
+	processor, err := NewPhotoProcessor()
 	if err != nil {
-		// If directory doesn't exist, try to create it or just warn
-		fmt.Printf("Error reading image directory %s: %v\n", imgDirPath, err)
+		fmt.Printf("Error initializing processor: %v\n", err)
+		os.Exit(1)
+	}
+	var existingContent []byte
+
+	if existingContent, err = processor.LoadExistingMetadata(); err != nil {
+		fmt.Printf("Warning: Failed to load existing metadata: %v\n", err)
+	}
+
+	// Collect all image files
+	type Job struct {
+		Path    string
+		YearDir string
+	}
+	var jobs []Job
+
+	entries, err := os.ReadDir(processor.ImgDirPath)
+	if err != nil {
+		fmt.Printf("Error reading image directory: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -228,286 +322,155 @@ func UpdatePhotosHandler() {
 		if !entry.IsDir() {
 			continue
 		}
-		year := entry.Name()
-		yearDir := filepath.Join(imgDirPath, year)
+		yearDir := filepath.Join(processor.ImgDirPath, entry.Name())
 
-		var photos []Photo
-
-		// Walk the year directory
 		err := filepath.WalkDir(
 			yearDir, func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
+				if err != nil || d.IsDir() {
 					return err
 				}
-				if d.IsDir() {
-					return nil
-				}
-
-				// Filter for image files
 				ext := strings.ToLower(filepath.Ext(d.Name()))
-				if ext != ExtJPG && ext != ExtJPEG && ext != ExtPNG && ext != ExtWebP {
-					return nil
+				if ext == ExtJPG || ext == ExtJPEG || ext == ExtPNG || ext == ExtWebP {
+					jobs = append(jobs, Job{Path: path, YearDir: entry.Name()})
 				}
-
-				filename := d.Name()
-				relPath, _ := filepath.Rel(rootDir, path)
-				webPath := strings.ReplaceAll(relPath, "\\", "/")
-
-				// Fix path to be relative to web/photography/index.html
-				// Current webPath: web/photography/gallery_images/2025/xxx.jpg
-				// Desired: gallery_images/2025/xxx.jpg
-				if after, ok := strings.CutPrefix(webPath, WebPhotographyPrefix); ok {
-					webPath = after
-				}
-
-				// Generate filename without extension for R2 keys
-				filenameNoExt := strings.TrimSuffix(filename, filepath.Ext(filename))
-
-				// R2 Upload Logic
-				var finalPath, finalThumbnail string
-
-				if r2Client != nil {
-					// 1. Check and upload original image
-					originalKey := fmt.Sprintf(
-						"%s%s%s", r2Client.config.BasePrefix, r2Client.config.OriginalPrefix, filename,
-					)
-					if !r2Client.CheckFileExists(originalKey) {
-						// Cache-Control: public, max-age=31536000 (1 year) for immutable images
-						if err := r2Client.UploadFile(path, originalKey, "public, max-age=31536000"); err != nil {
-							fmt.Printf("❌ Failed to upload original %s: %v\n", filename, err)
-							// Fallback to local path
-							finalPath = webPath
-						} else {
-							fmt.Printf("✓ Uploaded original: %s, %s\n", filename, originalKey)
-							finalPath = r2Client.GetCDNUrl(originalKey)
-						}
-					} else {
-						fmt.Printf("→ Original already exists: %s, %s\n", filename, originalKey)
-						finalPath = r2Client.GetCDNUrl(originalKey)
-					}
-
-					// 2. Check and upload thumbnail
-					thumbnailKey := fmt.Sprintf(
-						"%s%s%s%s", r2Client.config.BasePrefix, r2Client.config.ThumbnailPrefix, filenameNoExt, ExtWebP,
-					)
-					if !r2Client.CheckFileExists(thumbnailKey) {
-						// Generate thumbnail
-						thumbnailData, err := GenerateThumbnail(path, DefaultThumbnailConfig())
-						if err != nil {
-							fmt.Printf("❌ Failed to generate thumbnail for %s: %v\n", filename, err)
-							// Fallback to default thumbnail URL
-							finalThumbnail = thumbnailBase + filenameNoExt + ".webp"
-						} else {
-							// Upload thumbnail
-							// Cache-Control: public, max-age=31536000 (1 year) for immutable thumbnails
-							if err := r2Client.UploadBytes(thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000"); err != nil {
-								fmt.Printf("❌ Failed to upload thumbnail for %s: %v\n", filename, err)
-								finalThumbnail = thumbnailBase + filenameNoExt + ".webp"
-							} else {
-								fmt.Printf("✓ Generated and uploaded thumbnail: %s, %s\n", filename, thumbnailKey)
-								finalThumbnail = r2Client.GetCDNUrl(thumbnailKey)
-							}
-						}
-					} else {
-						fmt.Printf("→ Thumbnail already exists: %s,%s\n", filename, thumbnailKey)
-						//r2Client.UploadBytes( thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000")
-						// 想更新数据
-						finalThumbnail = r2Client.GetCDNUrl(thumbnailKey)
-					}
-				} else {
-					// No R2 client, use local paths
-					finalPath = webPath
-					finalThumbnail = thumbnailBase + filenameNoExt + ".webp"
-				}
-
-				// Parse Date - Try EXIF first, fallback to filename
-				var month, dateStr string
-				var photoYear string
-				var photoExif ExifData
-
-				// Try to extract date from EXIF
-				exifYear, exifMonth, exifDateStr, imageWidth, imageHeight, exifData, err := extractDateFromExif(path)
-				if err == nil {
-					// Successfully extracted from EXIF
-					photoYear = exifYear
-					month = exifMonth
-					dateStr = exifDateStr
-					photoExif = exifData
-					fmt.Printf("✓ EXIF date for %s: %s\n", filename, dateStr)
-				} else {
-					// Fallback to filename parsing
-					fmt.Printf("⚠ EXIF failed for %s (%v), trying filename...\n", filename, err)
-					matches := dateRegex.FindStringSubmatch(filename)
-					if len(matches) >= 4 {
-						// matches[1] is Year, matches[2] is Month, matches[3] is Day
-						photoYear = matches[1]
-						month = matches[2]
-						dateStr = fmt.Sprintf(DateFormatYMD, matches[1], matches[2], matches[3])
-						fmt.Printf("✓ Filename date for %s: %s\n", filename, dateStr)
-					} else {
-						// Last resort: use directory year and default values
-						photoYear = year
-						month = DefaultMonth
-						dateStr = fmt.Sprintf(DateFormatDefault, year)
-						fmt.Printf("⚠ No date found for %s, using default: %s\n", filename, dateStr)
-					}
-				}
-
-				photo := Photo{
-					Filename:  filename,
-					Path:      finalPath,
-					Thumbnail: finalThumbnail,
-					Alt:       "",
-					Year:      photoYear,
-					Month:     month,
-					Date:      dateStr,
-					Width:     imageWidth,
-					Height:    imageHeight,
-					Exif:      photoExif,
-				}
-
-				// Preserve existing metadata
-				if existingYear, ok := existingAlbums[year]; ok {
-					if existingPhoto, ok := existingYear[filename]; ok {
-						photo.Alt = existingPhoto.Alt
-						// photo.Width = existingPhoto.Width
-						// photo.Height = existingPhoto.Height
-					}
-				}
-
-				photos = append(photos, photo)
 				return nil
 			},
 		)
-
 		if err != nil {
 			fmt.Printf("Error walking directory %s: %v\n", yearDir, err)
-			continue
-		}
-
-		// Sort photos by Date Descending
-		sort.Slice(
-			photos, func(i, j int) bool {
-				return photos[i].Date > photos[j].Date
-			},
-		)
-
-		if len(photos) > 0 {
-			newAlbums = append(
-				newAlbums, YearAlbum{
-					Year:   year,
-					Photos: photos,
-				},
-			)
 		}
 	}
 
-	// Sort albums by year descending
+	// Worker Pool
+	jobsChan := make(chan Job, len(jobs))
+	resultsChan := make(chan Photo, len(jobs))
+	var wg sync.WaitGroup
+
+	// Start workers
+	numWorkers := MaxConcurrency
+	if len(jobs) < numWorkers {
+		numWorkers = len(jobs)
+	}
+
+	fmt.Printf("🟢 Starting %d workers for %d photos...\n", numWorkers, len(jobs))
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobsChan {
+				photo, err := processor.processPhoto(job.Path, job.YearDir)
+				if err != nil {
+					fmt.Printf("Error processing %s: %v\n", filepath.Base(job.Path), err)
+					continue
+				}
+				resultsChan <- photo
+			}
+		}()
+	}
+
+	// Send jobs
+	for _, job := range jobs {
+		jobsChan <- job
+	}
+	close(jobsChan)
+	fmt.Println("✓ 任务分发完成")
+
+	// Wait for workers
+	wg.Wait()
+	fmt.Println("✓ 任务已经结束")
+	close(resultsChan)
+
+	// Collect results
+	var allPhotos []Photo
+	for photo := range resultsChan {
+		allPhotos = append(allPhotos, photo)
+	}
+
+	// Organize into albums
+	albumsMap := make(map[string][]Photo)
+	for _, p := range allPhotos {
+		albumsMap[p.Year] = append(albumsMap[p.Year], p)
+	}
+
+	var newAlbums []YearAlbum
+	for year, photos := range albumsMap {
+		// Sort photos by date desc, then timestamp desc, then filename desc
+		sort.Slice(
+			photos, func(i, j int) bool {
+				if photos[i].Date != photos[j].Date {
+					return photos[i].Date > photos[j].Date
+				}
+				if photos[i].Timestamp != photos[j].Timestamp {
+					return photos[i].Timestamp > photos[j].Timestamp
+				}
+				return photos[i].Filename > photos[j].Filename
+			},
+		)
+		newAlbums = append(newAlbums, YearAlbum{Year: year, Photos: photos})
+	}
+
+	// Sort albums by year desc
 	sort.Slice(
 		newAlbums, func(i, j int) bool {
 			return newAlbums[i].Year > newAlbums[j].Year
 		},
 	)
 
-	// 3. Write to photos.json
-	// Filter EXIF data to reduce file size
-	// Whitelist of keys used in gallery.js
-	allowedExifKeys := map[string]bool{
-		// Rating & Tags
-		"Rating": true, "Keywords": true, "Subject": true,
-		// Shooting Params
-		"FocalLength": true, "FNumber": true, "Aperture": true, "ExposureTime": true, "ShutterSpeed": true, "ISO": true,
-		// Device Info
-		"Make": true, "Model": true, "LensModel": true, "Lens": true, "FocalLengthIn35mmFormat": true,
-		// Shooting Mode
-		"WhiteBalance": true, "ExposureProgram": true, "ExposureMode": true, "MeteringMode": true, "Flash": true,
-		"SceneCaptureType": true,
-		// GPS Location
-		"GPSLatitude": true, "GPSLongitude": true, "GPSAltitude": true, "GPSLatitudeRef": true, "GPSLongitudeRef": true,
-		// Date (for reference/debugging if needed, though we parse it separately)
-		"DateTimeOriginal": true, "CreateDate": true, "OffsetTimeOriginal": true, "OffsetTime": true,
-	}
-
-	for i := range newAlbums {
-		for j := range newAlbums[i].Photos {
-			if newAlbums[i].Photos[j].Exif != nil {
-				filteredExif := make(map[string]interface{})
-				for k, v := range newAlbums[i].Photos[j].Exif {
-					if allowedExifKeys[k] {
-						filteredExif[k] = v
-					}
-				}
-				newAlbums[i].Photos[j].Exif = filteredExif
-			}
-		}
-	}
-
-	// Find photos to delete by comparing existing photos with new photos
-	var photosToDelete []Photo
-	if len(existingAllPhotos) > 0 {
-		// Create a map of new photos for quick lookup
+	// Identify deleted photos
+	if processor.R2Client != nil {
 		newPhotosMap := make(map[string]bool)
-		for _, album := range newAlbums {
-			for _, photo := range album.Photos {
-				newPhotosMap[photo.Filename] = true
+		for _, p := range allPhotos {
+			newPhotosMap[p.Filename] = true
+		}
+
+		var keysToDelete []string
+		for filename := range processor.ExistingPhotos {
+			if !newPhotosMap[filename] {
+				fmt.Printf("Marking for deletion: %s\n", filename)
+				// Add original and thumbnail to delete list
+				keysToDelete = append(
+					keysToDelete,
+					fmt.Sprintf(
+						"%s%s%s", processor.R2Client.config.BasePrefix, processor.R2Client.config.OriginalPrefix,
+						filename,
+					),
+					fmt.Sprintf(
+						"%s%s%s%s", processor.R2Client.config.BasePrefix, processor.R2Client.config.ThumbnailPrefix,
+						strings.TrimSuffix(filename, filepath.Ext(filename)), ExtWebP,
+					),
+				)
 			}
 		}
 
-		// Find photos that exist in old list but not in new list
-		for _, existingPhoto := range existingAllPhotos {
-			if !newPhotosMap[existingPhoto.Filename] {
-				photosToDelete = append(photosToDelete, existingPhoto)
+		if len(keysToDelete) > 0 {
+			fmt.Printf("🟢 Deleting %d orphaned files from R2...\n", len(keysToDelete))
+			if err := processor.R2Client.DeleteObjects(keysToDelete); err != nil {
+				fmt.Printf("Error deleting objects: %v\n", err)
+			} else {
+				fmt.Println("✓ Successfully deleted orphaned files.")
 			}
 		}
 	}
 
-	// Delete photos from R2 if R2 client is available
-	if r2Client != nil && len(photosToDelete) > 0 {
-		fmt.Printf("Deleting %d photos from R2...\n", len(photosToDelete))
-		for _, photo := range photosToDelete {
-			// Extract filename without extension for generating R2 keys
-			filenameWithoutExt := strings.TrimSuffix(photo.Filename, filepath.Ext(photo.Filename))
-
-			// Delete original photo from R2
-			originalKey := fmt.Sprintf(
-				"%s%s%s", r2Client.config.BasePrefix, r2Client.config.OriginalPrefix, photo.Filename,
-			)
-			if err := r2Client.DeleteObject(originalKey); err != nil {
-				fmt.Printf("⚠️  Failed to delete original from R2: %s (%v)\n", photo.Filename, err)
-			} else {
-				fmt.Printf("✓ Deleted original from R2: %s\n", originalKey)
-			}
-
-			// Delete thumbnail from R2
-			thumbnailKey := fmt.Sprintf(
-				"%s%s%s%s", r2Client.config.BasePrefix, r2Client.config.ThumbnailPrefix, filenameWithoutExt, ExtWebP,
-			)
-			if err := r2Client.DeleteObject(thumbnailKey); err != nil {
-				fmt.Printf("⚠️  Failed to delete thumbnail from R2: %s (%v)\n", thumbnailKey, err)
-			} else {
-				fmt.Printf("✓ Deleted thumbnail from R2: %s\n", thumbnailKey)
-			}
-		}
-	} else if len(photosToDelete) > 0 {
-		fmt.Printf("Found %d photos to delete, but R2 client not available.\n", len(photosToDelete))
-	} else {
-		fmt.Printf("No photos to delete from R2.\n")
-	}
-
-	// Use Marshal instead of MarshalIndent for minified output
+	// Write output
 	jsonData, err := json.Marshal(newAlbums)
 	if err != nil {
 		fmt.Printf("Error marshaling JSON: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Check if content has changed
-	if bytes.Equal(existingContent, jsonData) {
-		fmt.Println("✓ photos.json has not changed. Skipping backup, file write, and R2 upload.")
-		return
-	}
+	outputFilePath := filepath.Join(processor.RootDir, OutputFile)
 
-	// Content has changed, proceed with updates
+	// Check if content changed (ignoring order if possible, but simple byte check is fast)
+	// Since we re-generated everything, byte comparison might fail if order changed slightly or timestamps
+	// But we should write anyway if we processed updates.
+
+	err = os.WriteFile(outputFilePath, jsonData, 0644)
+	if err != nil {
+		fmt.Printf("Error writing output file: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Create backup of existing file if it exists
 	if len(existingContent) > 0 {
@@ -519,29 +482,55 @@ func UpdatePhotosHandler() {
 		}
 	}
 
-	err = os.WriteFile(outputFilePath, jsonData, 0644)
-	if err != nil {
-		fmt.Printf("Error writing to %s: %v\n", outputFilePath, err)
-		os.Exit(1)
+	// Check if content has changed
+	if JSONEqual(existingContent, jsonData) {
+		fmt.Println("✓ photos.json has not changed. Skipping backup, file write, and R2 upload.")
+		return
 	}
 
 	// Upload photos.json to R2
-	if r2Client != nil {
-		jsonKey := fmt.Sprintf("%sphotos.json", r2Client.config.BasePrefix)
-		fmt.Printf("Uploading photos.json to R2 (%s)...\n", jsonKey)
-		// Cache-Control: no-cache to force revalidation
-		if err := r2Client.UploadBytes(jsonData, jsonKey, "application/json", "no-cache"); err != nil {
-			fmt.Printf("❌ Failed to upload photos.json to R2: %v\n", err)
+	if processor.R2Client != nil {
+		jsonKey := fmt.Sprintf("%sphotos.json", processor.R2Client.config.BasePrefix)
+		if err := processor.R2Client.UploadBytes(
+			jsonData, jsonKey, "application/json", "public, max-age=60, must-revalidate",
+		); err != nil {
+			fmt.Printf("❌ Failed to upload photos.json: %v\n", err)
 		} else {
-			fmt.Printf("✓ Uploaded photos.json to R2: %s\n", r2Client.GetCDNUrl(jsonKey))
+			fmt.Printf("✓ Uploaded photos.json to R2\n")
 		}
 	}
 
-	totalPhotos := 0
-	for _, album := range newAlbums {
-		totalPhotos += len(album.Photos)
+	fmt.Printf("Successfully updated photos.json with %d photos.\n", len(allPhotos))
+}
+
+// JSONEqual compares two JSON byte slices for equality, ignoring whitespace and key order
+func JSONEqual(a, b []byte) bool {
+	var j1, j2 interface{}
+	if err := json.Unmarshal(a, &j1); err != nil {
+		return false
 	}
-	fmt.Printf(
-		"Successfully generated %s with %d years and %d total photos.\n", outputFilePath, len(newAlbums), totalPhotos,
-	)
+	if err := json.Unmarshal(b, &j2); err != nil {
+		return false
+	}
+
+	// Re-marshal to ensure consistent formatting (e.g. sorted keys, no whitespace)
+	// Use MarshalIndent for readability in diffs
+	m1, err := json.MarshalIndent(j1, "", "  ")
+	if err != nil {
+		return false
+	}
+	m2, err := json.MarshalIndent(j2, "", "  ")
+	if err != nil {
+		return false
+	}
+
+	if !bytes.Equal(m1, m2) {
+		fmt.Println("⚠️ JSON content differs. Writing to files for comparison...")
+		_ = os.WriteFile("photos_old.json", m1, 0644)
+		_ = os.WriteFile("photos_new.json", m2, 0644)
+		fmt.Println("👉 Please compare 'photos_old.json' and 'photos_new.json' to see the differences.")
+		return false
+	}
+
+	return true
 }
