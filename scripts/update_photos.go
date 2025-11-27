@@ -492,7 +492,7 @@ func UpdatePhotosHandler() {
 	if processor.R2Client != nil {
 		jsonKey := fmt.Sprintf("%sphotos.json", processor.R2Client.config.BasePrefix)
 		if err := processor.R2Client.UploadBytes(
-			jsonData, jsonKey, "application/json", "public, max-age=60, must-revalidate",
+			jsonData, jsonKey, "application/json", "public, max-age=720, must-revalidate",
 		); err != nil {
 			fmt.Printf("❌ Failed to upload photos.json: %v\n", err)
 		} else {

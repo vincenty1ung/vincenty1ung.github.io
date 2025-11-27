@@ -16,3 +16,4 @@ scripts/migrate_photos.go
 web/photography/photos.json
 .agent/
 *test.go
+*.json
