@@ -13,7 +13,7 @@ docker_mysql.session.sql
 scripts/.env
 scripts/migrate_photos.go
 *.bak
-web/photography/photos.json
+*photos*.json
 .agent/
 *test.go
 *.json

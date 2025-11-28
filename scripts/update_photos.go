@@ -214,6 +214,7 @@ func (p *PhotoProcessor) processPhoto(path string, yearDirName string) (Photo, e
 		if err := p.R2Client.UploadFile(path, originalKey, "public, max-age=31536000"); err != nil {
 			fmt.Printf("❌ Failed to upload original %s: %v\n", filename, err)
 			finalPath = webPath
+			return Photo{}, fmt.Errorf("failed to upload original %s: %w", filename, err)
 		} else {
 			finalPath = p.R2Client.GetCDNUrl(originalKey)
 		}
@@ -226,6 +227,7 @@ func (p *PhotoProcessor) processPhoto(path string, yearDirName string) (Photo, e
 		if err != nil {
 			fmt.Printf("❌ Failed to generate thumbnail for %s: %v\n", filename, err)
 			finalThumbnail = p.ThumbnailBase + filenameNoExt + ".webp"
+			return Photo{}, fmt.Errorf("failed to upload thumbnail %s: %w", filename, err)
 		} else {
 			if err := p.R2Client.UploadBytes(
 				thumbnailData, thumbnailKey, "image/webp", "public, max-age=31536000",
@@ -492,7 +494,8 @@ func UpdatePhotosHandler() {
 	if processor.R2Client != nil {
 		jsonKey := fmt.Sprintf("%sphotos.json", processor.R2Client.config.BasePrefix)
 		if err := processor.R2Client.UploadBytes(
-			jsonData, jsonKey, "application/json", "public, max-age=720, must-revalidate",
+			// jsonData, jsonKey, "application/json", "public, max-age=720, must-revalidate",
+			jsonData, jsonKey, "application/json", "public, max-age=720",
 		); err != nil {
 			fmt.Printf("❌ Failed to upload photos.json: %v\n", err)
 		} else {
