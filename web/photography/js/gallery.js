@@ -642,9 +642,12 @@ function bindImageLoadEvents() {
       }
 
       function checkImageLoaded() {
-        if (img.complete && img.naturalWidth > 0) {
-          hideSkeleton();
-          return true;
+        // More lenient check: if complete and has dimensions, it's loaded
+        if (img.complete) {
+          if (img.naturalWidth > 0 || img.naturalHeight > 0) {
+            hideSkeleton();
+            return true;
+          }
         }
         return false;
       }
@@ -654,20 +657,28 @@ function bindImageLoadEvents() {
 
       // Event listeners
       img.addEventListener("load", hideSkeleton, { once: true });
-      img.addEventListener("error", hideSkeleton, { once: true });
+      img.addEventListener("error", () => {
+        console.warn('Image failed to load:', img.src);
+        hideSkeleton(); // Even on error, remove skeleton to avoid permanent loading state
+      }, { once: true });
     });
   };
 
-  // Run initial check
-  checkAllImages();
-
-  // Polling fallback (keep this for robustness)
-  let checks = 0;
-  const interval = setInterval(() => {
+  // Use requestAnimationFrame to ensure DOM is ready before first check
+  requestAnimationFrame(() => {
     checkAllImages();
-    checks++;
-    if (checks > 50) clearInterval(interval);
-  }, 100);
+  });
+
+  // More frequent polling, NO limit on checks (will be stopped by window.load)
+  const interval = setInterval(checkAllImages, 50);
+
+  // Stop polling and do final check after window load
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      checkAllImages();
+      clearInterval(interval);
+    }, 100);
+  }, { once: true });
 
   // Re-check on visibility change (fixes tab switch issue)
   document.addEventListener("visibilitychange", () => {
@@ -679,11 +690,6 @@ function bindImageLoadEvents() {
   // Re-check on page show (fixes back/forward cache issues)
   window.addEventListener("pageshow", () => {
     checkAllImages();
-  });
-  
-  // Global safety check after window load
-  window.addEventListener("load", () => {
-    setTimeout(checkAllImages, 500);
   });
 }
 
