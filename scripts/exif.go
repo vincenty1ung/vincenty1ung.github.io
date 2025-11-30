@@ -217,6 +217,11 @@ func extractExifWithTool(filePath string) (map[string]interface{}, int, int, tim
 		"ShutterSpeed":            true,
 		"Subject":                 true,
 		"WhiteBalance":            true,
+		"GPSAltitude":             true,
+		"GPSLatitude":             true,
+		"GPSLatitudeRef":          true,
+		"GPSLongitude":            true,
+		"GPSLongitudeRef":         true,
 	}
 
 	// 过滤字段,只保留白名单中的字段
