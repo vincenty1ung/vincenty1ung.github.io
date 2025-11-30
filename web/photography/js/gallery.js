@@ -298,6 +298,18 @@ async function loadGallery() {
     if (typeof currentColumnCount !== 'undefined') {
       currentColumnCount = getColumnCount();
     }
+    
+    // Force layout recalculation to fix flex width issue
+    // This solves the problem where images have 0px width on initial load
+    requestAnimationFrame(() => {
+      const container = document.getElementById("gallery-content");
+      if (container) {
+        // Force reflow
+        void container.offsetHeight;
+        // Trigger resize event to recalculate flex layout
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
   } catch (error) {
     console.error("Error loading gallery:", error);
     galleryContainer.innerHTML =
@@ -595,6 +607,8 @@ function createPhotoCard(photo, year, month) {
          class="block w-full h-full gallery-item">
         <img
           alt="${photo.alt || ''}"
+          width="${width}"
+          height="${height}"
           class="block w-full h-full object-cover object-center opacity-0 animate-fade-in transition duration-300 img-hover-zoom img-loading rounded-lg"
           src="${photo.thumbnail}"
         />

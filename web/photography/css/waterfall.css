@@ -6,16 +6,21 @@
 }
 
 .waterfall-column {
-  flex: 1;
+  flex: 1 1 0%; /* Explicitly set flex-basis to 0 for equal distribution */
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   min-width: 0; /* Prevent flex overflow */
+  width: 100%; /* Ensure column has width */
 }
 
 .photo-card {
   width: 100%;
   break-inside: avoid;
+  display: block;
+  /* Ensure aspect-ratio works correctly */
+  position: relative;
+  contain: layout;
 }
 
 .photo-card img {
