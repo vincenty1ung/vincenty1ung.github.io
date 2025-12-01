@@ -16,7 +16,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const R2RequestTimeout = 120 * time.Second
+const R2RequestTimeout = 360 * time.Second
 
 // R2Config holds the configuration for Cloudflare R2
 type R2Config struct {
