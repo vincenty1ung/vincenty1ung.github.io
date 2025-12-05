@@ -1,7 +1,7 @@
 # Vincent's Personal Website & Blog
 
 <p align="center">
-  <img alt="Logo" src="./web/img/logo1.jpg" width="100">
+  <img alt="Logo" src="web/before/img/logo1.jpg" width="100">
 </p>
 
 <p align="center">

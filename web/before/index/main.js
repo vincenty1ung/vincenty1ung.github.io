@@ -22,12 +22,8 @@
     // of different video formats to add
     src: [
       {
-        src: 'web/index/night.mp4',
+        src: 'web/before/index/night.mp4',
         type: 'video/mp4'
-      },
-      {
-        src: 'night.webm',
-        type: 'video/webm;codecs="vp8, vorbis"'
       }
     ],
 

@@ -50,17 +50,20 @@ function siteTime() {
       diffMinutes * minutes) /
       seconds
   );
-  document.getElementById("sitetime").innerHTML =
-    "Website is running " +
-    diffYears +
-    " year " +
-    diffDays +
-    " day " +
-    diffHours +
-    " hour " +
-    diffMinutes +
-    " min " +
-    diffSeconds +
-    " s";
+  var sitetimeEl = document.getElementById("sitetime");
+  if (sitetimeEl) {
+    sitetimeEl.innerHTML =
+      "Website is running " +
+      diffYears +
+      " year " +
+      diffDays +
+      " day " +
+      diffHours +
+      " hour " +
+      diffMinutes +
+      " min " +
+      diffSeconds +
+      " s";
+  }
 }
 siteTime();
