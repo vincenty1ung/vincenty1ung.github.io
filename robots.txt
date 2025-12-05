@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: blog-vincent.chyu.org
+
+Sitemap: https://blog-vincent.chyu.org/sitemap.xml
