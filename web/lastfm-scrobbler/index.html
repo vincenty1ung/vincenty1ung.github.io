@@ -1,0 +1,3720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>音乐播放统计系统 - 仪表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+      :root {
+        --primary-color: #3498db;
+        --secondary-color: #2ecc71;
+        --background-color: #f8f9fa;
+        --accent-color: #e74c3c;
+        --text-primary: #2c3e50;
+        --text-secondary: #7f8c8d;
+        --card-bg: #ffffff;
+        --border-color: #e9ecef;
+        /* 播放渠道颜色 */
+        --source-applemusic: #e74c3c; /* 红色 */
+        --source-audirvana: #9b59b6; /* 紫色 */
+        --source-roon: #7f8c8d; /* 灰色 */
+      }
+
+      /* 夜间模式 */
+      .dark-mode {
+        --primary-color: #5dade2;
+        --secondary-color: #58d68d;
+        --background-color: #1a1a1a;
+        --accent-color: #ec7063;
+        --text-primary: #f0f0f0;
+        --text-secondary: #bdc3c7;
+        --card-bg: #2c2c2c;
+        --border-color: #444444;
+        /* 播放渠道颜色 */
+        --source-applemusic: #ec7063; /* 红色 */
+        --source-audirvana: #bb8fce; /* 紫色 */
+        --source-roon: #bdc3c7; /* 灰色 */
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      /* 顶部导航栏 */
+      .navbar {
+        background-color: var(--card-bg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 15px 0;
+        margin-bottom: 30px;
+        border-radius: 10px;
+      }
+
+      .navbar-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      .logo {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        list-style: none;
+      }
+
+      .nav-links li {
+        margin-left: 25px;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+        color: var(--text-primary);
+        font-weight: 500;
+        padding: 8px 15px;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+      }
+
+      .nav-links a:hover,
+      .nav-links a.active {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      /* 统计卡片 */
+      .stats-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .stat-card {
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        min-width: 150px;
+        flex: 1;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .stat-title {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+      }
+
+      .icon-1 {
+        background-color: rgba(52, 152, 219, 0.1);
+        color: var(--primary-color);
+      }
+      .icon-2 {
+        background-color: rgba(46, 204, 113, 0.1);
+        color: var(--secondary-color);
+      }
+      .icon-3 {
+        background-color: rgba(231, 76, 60, 0.1);
+        color: var(--accent-color);
+      }
+      .icon-4 {
+        background-color: rgba(155, 89, 182, 0.1);
+        color: #9b59b6;
+      }
+
+      .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+
+      .stat-change {
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+
+      .positive {
+        color: var(--secondary-color);
+      }
+      .negative {
+        color: var(--accent-color);
+      }
+
+      /* 加载和错误状态 */
+      .loading,
+      .error {
+        text-align: center;
+        padding: 20px;
+      }
+
+      .loading {
+        color: var(--text-secondary);
+      }
+
+      .error {
+        color: var(--accent-color);
+        background-color: rgba(231, 76, 60, 0.1);
+        border-radius: 8px;
+      }
+
+      /* 图表区域 */
+      .charts-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .chart-card {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        padding: 25px;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .card-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .time-filters {
+        display: flex;
+        background-color: #f1f3f9;
+        border-radius: 8px;
+        padding: 4px;
+      }
+
+      .dark-mode .time-filters {
+        background-color: #3a3a3a; /* 夜间模式下的背景色 */
+      }
+
+      .time-filter {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        background-color: #f1f3f9;
+        color: #2c3e50;
+        border: 1px solid #e9ecef;
+      }
+
+      .dark-mode .time-filter {
+        background-color: #3a3a3a;
+        color: var(--text-secondary);
+        border: 1px solid #444444;
+      }
+
+      .time-filter.active {
+        background-color: var(--primary-color);
+        color: white;
+        border: 1px solid var(--primary-color);
+      }
+
+      .dark-mode .time-filter.active {
+        background-color: var(--primary-color);
+        color: white;
+        border: 1px solid var(--primary-color);
+      }
+
+      .time-filter:disabled {
+        background-color: #e9ecef;
+        color: #7f8c8d;
+        cursor: not-allowed;
+      }
+
+      .dark-mode .time-filter:disabled {
+        background-color: #444444;
+        color: #7f8c8d;
+        border: 1px solid #555555;
+      }
+
+      .chart-container {
+        height: 300px;
+        position: relative;
+      }
+
+      /* 排行榜容器 */
+      .rankings-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      /* 排行榜 */
+      .ranking-card {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        padding: 25px;
+        margin-bottom: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .ranking-list {
+        list-style: none;
+        flex-grow: 1;
+      }
+
+      .ranking-item {
+        display: flex;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .ranking-item:last-child {
+        border-bottom: none;
+      }
+
+      .rank-number {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-right: 15px;
+      }
+
+      .rank-1 {
+        background-color: #ffd700;
+        color: #333;
+      }
+      .rank-2 {
+        background-color: #c0c0c0;
+        color: #333;
+      }
+      .rank-3 {
+        background-color: #cd7f32;
+        color: #fff;
+      }
+      .rank-other {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .track-info {
+        flex: 1;
+      }
+
+      .track-title {
+        font-weight: 500;
+        /* margin-bottom: 3px; */
+      }
+
+      .track-artist {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+      .track-album {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+
+      .play-count {
+        font-weight: 700;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+      }
+
+      /* 播放渠道样式 */
+      .play-source {
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        align-self: flex-end;
+        display: inline-block;
+        width: auto;
+      }
+
+      .source-applemusic {
+        color: var(--source-applemusic);
+        background-color: rgba(231, 76, 60, 0.1);
+      }
+
+      .source-audirvana {
+        color: var(--source-audirvana);
+        background-color: rgba(155, 89, 182, 0.1);
+      }
+
+      .source-roon {
+        color: var(--source-roon);
+        background-color: rgba(127, 140, 141, 0.1);
+      }
+
+      /* 响应式设计 */
+      @media (max-width: 1200px) {
+        .charts-container {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .navbar-content {
+          flex-direction: column;
+          padding: 10px;
+        }
+
+        .nav-links {
+          margin-top: 15px;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .nav-links li {
+          margin: 5px;
+        }
+
+        .stats-container {
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .ranking-item {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .track-info {
+          margin: 10px 0;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .container {
+          padding: 10px;
+        }
+
+        .stat-card {
+          padding: 15px;
+        }
+
+        .stat-value {
+          font-size: 1.8rem;
+        }
+
+        .charts-container {
+          gap: 15px;
+        }
+
+        .chart-card {
+          padding: 15px;
+        }
+
+        .card-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .time-filters {
+          margin-top: 10px;
+          align-self: flex-start;
+        }
+
+        .ranking-item {
+          padding: 10px 0;
+        }
+
+        .track-title {
+          font-size: 1rem;
+        }
+
+        .track-artist {
+          font-size: 0.9rem;
+        }
+      }
+
+      /* 超小屏幕优化 */
+      @media (max-width: 320px) {
+        .stat-card {
+          padding: 10px;
+        }
+
+        .stat-title {
+          font-size: 0.9rem;
+        }
+
+        .stat-value {
+          font-size: 1.5rem;
+        }
+
+        .chart-card {
+          padding: 10px;
+        }
+      }
+
+      /* 全屏按钮简约样式 */
+      .fullscreen-btn {
+        background-color: transparent;
+        border: 1px solid #d1d1d1;
+        border-radius: 4px;
+        color: #666;
+        padding: 4px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .dark-mode .fullscreen-btn {
+        border: 1px solid #555; /* 夜间模式下的边框颜色 */
+        color: var(--text-secondary);
+      }
+
+      .fullscreen-btn:hover {
+        background-color: #f0f0f0;
+        border-color: #a0a0a0;
+        color: #333;
+      }
+
+      .dark-mode .fullscreen-btn:hover {
+        background-color: #444; /* 夜间模式下的悬停背景色 */
+        border-color: #777; /* 夜间模式下的悬停边框颜色 */
+        color: var(--text-primary);
+      }
+
+      /* 实时播放信息悬浮窗 */
+      #nowPlaying {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 240px;
+        background-color: rgba(255, 255, 255, 0.95); /* 90% 不透明度 */
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        padding: 20px;
+        z-index: 1000;
+        display: none;
+        animation: fadeIn 0.3s ease;
+        cursor: move;
+        user-select: none;
+      }
+
+      /* 夜间模式下的正在播放悬浮窗 */
+      .dark-mode #nowPlaying {
+        background-color: rgba(44, 44, 44, 0.95); /* 暗色背景 */
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      #nowPlaying h3 {
+        margin-top: 0;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+        font-size: 1.2rem;
+      }
+
+      .dark-mode #nowPlaying h3 {
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      /* 调整悬浮窗内容区域的最小高度 */
+      #nowPlayingInfo {
+        min-height: 100px;
+      }
+
+      .dark-mode #nowPlayingInfo {
+        min-height: 100px;
+      }
+
+      /* 喜欢状态指示器容器 */
+      .favorite-indicators-container {
+        font-size: 0.5em;
+        margin-top: 10px;
+        text-align: right; /* 右对齐 */
+      }
+
+      .dark-mode .favorite-indicators-container {
+        font-size: 0.5em;
+        margin-top: 10px;
+      }
+
+      /* 喜欢状态指示器 */
+      .favorite-indicator {
+        display: inline-block;
+        margin-left: 0;
+        vertical-align: middle;
+        font-size: 0.8em;
+        color: var(--text-secondary);
+      }
+
+      .dark-mode .favorite-indicator {
+        color: var(--text-secondary);
+      }
+
+      /* 收藏按钮样式调整 */
+      .favorite-button {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, color 0.2s ease;
+        margin-top: 10px;
+        padding: 0;
+        width: auto;
+        height: auto;
+      }
+
+      .dark-mode .favorite-button {
+        background: none;
+        border: none;
+      }
+
+      .favorite-button:hover {
+        transform: scale(1.1);
+      }
+
+      .dark-mode .favorite-button:hover {
+        transform: scale(1.1);
+      }
+
+      .favorite-button.liked {
+        color: var(--source-applemusic);
+        cursor: not-allowed; /* 已收藏时禁用点击 */
+      }
+
+      .dark-mode .favorite-button.liked {
+        color: var(--source-applemusic);
+        cursor: not-allowed; /* 已收藏时禁用点击 */
+      }
+
+      .favorite-button.unliked {
+        color: #ccc;
+      }
+
+      .dark-mode .favorite-button.unliked {
+        color: #888; /* 夜间模式下使用较暗的灰色 */
+      }
+
+      /* 歌曲标题和收藏按钮容器 */
+      .track-title-favorite-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 5px;
+      }
+
+      .dark-mode .track-title-favorite-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 5px;
+      }
+
+      /* 确保歌曲标题在容器中正确显示 */
+      .track-title {
+        flex-grow: 1; /* 允许标题占据可用空间 */
+        white-space: nowrap; /* 防止标题换行 */
+        overflow: hidden; /* 隐藏超出部分 */
+        text-overflow: ellipsis; /* 超出部分显示省略号 */
+      }
+
+      .dark-mode .track-title {
+        color: var(--text-primary); /* 夜间模式下使用主文本颜色 */
+      }
+
+      /* 正在播放悬浮窗头部 */
+      .now-playing-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: -20px -20px 15px -20px;
+        padding: 8px 15px;
+        border-bottom: 1px solid var(--border-color);
+        cursor: move;
+      }
+
+      .dark-mode .now-playing-header {
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      /* 正在播放控制按钮 */
+      .now-playing-controls {
+        display: flex;
+        gap: 5px;
+      }
+
+      .dark-mode .now-playing-controls {
+        display: flex;
+        gap: 5px;
+      }
+
+      /* 拖动把手 */
+      .drag-handle {
+        cursor: move;
+        font-size: 1.2rem;
+        color: #95a5a6;
+        padding: 0 3px;
+      }
+
+      .dark-mode .drag-handle {
+        color: #bdc3c7; /* 夜间模式下使用较亮的颜色 */
+      }
+
+      /* 缩小把手 */
+      .minimize-handle {
+        cursor: pointer;
+        font-size: 1.2rem;
+        color: #95a5a6;
+        padding: 0 3px;
+        font-weight: bold;
+      }
+
+      .dark-mode .minimize-handle {
+        color: #bdc3c7; /* 夜间模式下使用较亮的颜色 */
+      }
+
+      /* 拖动时的样式 */
+      #nowPlaying.dragging {
+        opacity: 0.8;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+      }
+
+      .dark-mode #nowPlaying.dragging {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      }
+
+      /* 缩小状态的样式 */
+      #nowPlaying.minimized {
+        width: 150px;
+        height: 60px;
+        padding: 10px;
+      }
+
+      .dark-mode #nowPlaying.minimized {
+        width: 150px;
+        height: 60px;
+        padding: 10px;
+      }
+
+      #nowPlaying.minimized .now-playing-header {
+        margin: -10px -10px 10px -10px;
+        padding: 5px 10px;
+      }
+
+      .dark-mode #nowPlaying.minimized .now-playing-header {
+        margin: -10px -10px 10px -10px;
+        padding: 5px 10px;
+      }
+
+      #nowPlaying.minimized #nowPlayingInfo {
+        display: none;
+      }
+
+      .dark-mode #nowPlaying.minimized #nowPlayingInfo {
+        display: none;
+      }
+
+      #nowPlaying.minimized h3 {
+        font-size: 1rem;
+        padding-bottom: 0;
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+
+      .dark-mode #nowPlaying.minimized h3 {
+        font-size: 1rem;
+        padding-bottom: 0;
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+
+      /* 未上报记录容器 */
+      .dark-mode #unscrobbledContainer .chart-card {
+        background-color: var(--card-bg);
+        color: var(--text-primary);
+      }
+
+      .dark-mode #unscrobbledContainer .card-title {
+        color: var(--text-primary);
+      }
+
+      .dark-mode #unscrobbledContainer .loading {
+        color: var(--text-secondary);
+      }
+
+      /* 未上报记录表格 */
+      .dark-mode #unscrobbledContainer table {
+        color: var(--text-primary);
+      }
+
+      .dark-mode #unscrobbledContainer table thead tr {
+        background-color: #3a3a3a;
+      }
+
+      .dark-mode #unscrobbledContainer table thead th {
+        border-bottom: 2px solid #444444;
+      }
+
+      .dark-mode #unscrobbledContainer table tbody tr {
+        border-bottom: 1px solid #444444;
+      }
+
+      /* 未上报记录分页 */
+      .dark-mode #unscrobbledContainer #pagination {
+        color: var(--text-primary);
+      }
+
+      /* 喜欢状态指示器 */
+      .favorite-indicator {
+        display: inline-block;
+        margin-left: 10px;
+        vertical-align: middle;
+        font-size: 0.8em;
+        color: var(--text-secondary);
+      }
+
+      /* 点赞按钮 */
+      .favorite-button {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, color 0.2s ease;
+        margin-top: 10px;
+        padding: 0;
+        width: auto;
+        height: auto;
+      }
+
+      .dark-mode .favorite-button {
+        background: none;
+        border: none;
+      }
+
+      .favorite-button:hover {
+        transform: scale(1.1);
+      }
+
+      .favorite-button.liked {
+        color: var(--source-applemusic);
+        cursor: not-allowed; /* 已收藏时禁用点击 */
+      }
+
+      .favorite-button.unliked {
+        color: #ccc;
+      }
+
+      /* 播放进度条容器 */
+      .progress-container {
+        width: 100%;
+        margin: 15px 0 10px 0;
+        position: relative;
+      }
+
+      .dark-mode .progress-container {
+        width: 100%;
+        margin: 15px 0 10px 0;
+      }
+
+      /* 进度条轨道 */
+      .progress-track {
+        width: 100%;
+        height: 6px;
+        background-color: #e9ecef;
+        border-radius: 3px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .dark-mode .progress-track {
+        background-color: #555; /* 夜间模式下使用较暗的背景 */
+      }
+
+      /* 进度条已完成部分 */
+      .progress-fill {
+        height: 100%;
+        background-color: var(--primary-color);
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .dark-mode .progress-fill {
+        background-color: var(--primary-color);
+      }
+
+      /* 进度条拖拽点 */
+      .progress-thumb {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translate(50%, -50%);
+        width: 12px;
+        height: 12px;
+        background-color: var(--primary-color);
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+      }
+
+      .dark-mode .progress-thumb {
+        background-color: var(--primary-color);
+      }
+
+      .progress-track:hover .progress-thumb {
+        opacity: 1;
+      }
+
+      .dark-mode .progress-track:hover .progress-thumb {
+        opacity: 1;
+      }
+
+      /* 播放进度时间显示 */
+      .progress-time {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 5px;
+      }
+
+      .dark-mode .progress-time {
+        color: var(--text-secondary);
+      }
+
+      /* 模态框样式 */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+      }
+
+      .modal-content {
+        background-color: var(--card-bg);
+        margin: 5% auto;
+        padding: 0;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        width: 80%;
+        max-width: 600px;
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+        animation-name: animatetop;
+        animation-duration: 0.3s;
+      }
+
+      @keyframes animatetop {
+        from {top: -300px; opacity: 0}
+        to {top: 0; opacity: 1}
+      }
+
+      .modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        color: var(--text-primary);
+      }
+
+      .close {
+        color: var(--text-secondary);
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .close:hover,
+      .close:focus {
+        color: var(--text-primary);
+      }
+
+      .modal-body {
+        padding: 20px;
+        color: var(--text-primary);
+      }
+
+      .modal-body .track-info p {
+        margin: 10px 0;
+      }
+
+      .modal-body .track-info strong {
+        color: var(--primary-color);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 实时播放信息悬浮窗 -->
+    <div id="nowPlaying">
+      <div class="now-playing-header">
+        <h4>正在播放</h4>
+        <div class="now-playing-controls">
+          <div class="drag-handle">⋮</div>
+          <div class="minimize-handle">−</div>
+        </div>
+      </div>
+      <div id="nowPlayingInfo">
+        <div class="track-title-favorite-container">
+          <div class="track-title" id="trackTitle"></div>
+          <button
+            class="favorite-button unliked"
+            id="favoriteButton"
+            title="添加到喜欢"
+          ></button>
+        </div>
+
+        <div class="track-artist" id="trackArtist"></div>
+        <div class="track-album" id="trackAlbum">-</div>
+
+        <!-- 播放进度显示 -->
+        <div class="progress-container">
+          <div class="progress-track" id="progressTrack">
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-thumb" id="progressThumb"></div>
+          </div>
+          <div class="progress-time">
+            <span id="currentTime">00:00</span>
+            <span id="totalTime">00:00</span>
+          </div>
+        </div>
+
+        <div class="track-source" id="trackSource"></div>
+        <div class="favorite-indicators-container">
+          <div class="favorite-indicators" id="favoriteIndicators"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- 顶部导航栏 -->
+      <nav class="navbar">
+        <div class="navbar-content">
+          <a href="./" class="logo">音乐统计系统</a>
+          <ul class="nav-links">
+            <li><a href="./" class="active">仪表板</a></li>
+            <li><a href="#" id="unscrobbledTab">未上报</a></li>
+            <li><a href="../../web/photography/">光绘集</a></li>
+           <!-- <li><a href="/report">分析报告</a></li>-->
+            <!--<li><a href="/playCounts">播放统计</a></li>-->
+          </ul>
+        </div>
+      </nav>
+
+      <!-- 统计卡片 -->
+      <div class="stats-container">
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title">总播放次数</div>
+            <div class="stat-icon icon-1">▶️</div>
+          </div>
+          <div class="stat-value" id="totalPlays">0</div>
+          <div class="stat-change positive">↑ 12% 本月</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title">曲目总数</div>
+            <div class="stat-icon icon-2">🎵</div>
+          </div>
+          <div class="stat-value" id="totalTracks">0</div>
+          <div class="stat-change positive">↑ 5% 本月</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title">艺术家数量</div>
+            <div class="stat-icon icon-3">🎤</div>
+          </div>
+          <div class="stat-value" id="totalArtists">0</div>
+          <div class="stat-change negative">↓ 2% 本月</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title">专辑数量</div>
+            <div class="stat-icon icon-4">💿</div>
+          </div>
+          <div class="stat-value" id="totalAlbums">0</div>
+          <div class="stat-change positive">↑ 8% 本月</div>
+        </div>
+
+        <!-- 播放来源统计卡片 -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title">播放来源分布</div>
+            <div class="stat-icon icon-1">📊</div>
+          </div>
+          <div
+            class="chart-container"
+            style="height: 120px; position: relative"
+          >
+            <canvas id="sourceChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 图表区域 -->
+      <div class="charts-container">
+        <!-- 热门艺术家 -->
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">热门艺术家</div>
+            <div class="time-filters">
+              <div class="time-filter active" data-type="plays">播放次数</div>
+              <div class="time-filter" data-type="tracks">曲目数</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="artistChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 热门专辑 -->
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">热门专辑</div>
+            <div class="time-filters">
+              <div class="time-filter active" data-days="7">7天</div>
+              <div class="time-filter" data-days="30">30天</div>
+              <div class="time-filter" data-days="90">90天</div>
+              <div class="time-filter" data-days="365">365天</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="albumChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 热门流派 -->
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">口味流派</div>
+            <button id="genreChartFullscreenBtn" class="fullscreen-btn">
+              全屏
+            </button>
+          </div>
+          <div class="chart-container">
+            <canvas id="genreChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 播放趋势图 -->
+        <div class="chart-card">
+          <!-- <div class="chart-card" style="grid-column: span 2"> -->
+          <div class="card-header">
+            <div class="card-title">播放趋势</div>
+            <div style="display: flex; gap: 10px">
+              <div class="time-filters">
+                <div class="time-filter" data-range="7">7天</div>
+                <div class="time-filter active" data-range="30">30天</div>
+                <div class="time-filter" data-range="90">90天</div>
+              </div>
+              <button id="trendChartFullscreenBtn" class="fullscreen-btn">
+                全屏
+              </button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最近播放和播放排行并排显示 -->
+      <div class="rankings-container">
+        <!-- 最近播放 -->
+        <div class="ranking-card" id="recentPlaysCard">
+          <div class="card-header">
+            <div class="card-title">最近播放</div>
+          </div>
+          <ul class="ranking-list" id="recentPlaysList">
+            <!-- 最近播放项目将通过JavaScript动态加载 -->
+            <div class="loading">加载中...</div>
+          </ul>
+        </div>
+
+        <!-- 播放排行榜 -->
+        <div class="ranking-card" id="rankingCard">
+          <div class="card-header">
+            <div class="card-title">播放排行榜</div>
+            <div class="time-filters">
+              <div class="time-filter active" data-ranking="all">总排行</div>
+              <div class="time-filter" data-ranking="month">本月</div>
+              <div class="time-filter" data-ranking="week">本周</div>
+            </div>
+          </div>
+          <ul class="ranking-list" id="rankingList">
+            <!-- 排行榜项目将通过JavaScript动态加载 -->
+            <div class="loading">加载中...</div>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 未上报记录容器 -->
+      <div id="unscrobbledContainer" style="display: none">
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title">未上报记录</div>
+            <div>
+              <button
+                id="syncSelectedBtn"
+                class="time-filter"
+                style="margin-right: 10px"
+              >
+                同步选中
+              </button>
+              <button id="refreshUnscrobbledBtn" class="time-filter">
+                刷新
+              </button>
+            </div>
+          </div>
+          <div id="unscrobbledContent">
+            <div class="loading">加载中...</div>
+          </div>
+          <div
+            id="pagination"
+            style="display: flex; justify-content: center; margin-top: 20px"
+          >
+            <button id="prevPage" class="time-filter" disabled>上一页</button>
+            <span
+              id="pageInfo"
+              style="margin: 0 15px; line-height: 36px"
+            ></span>
+            <button id="nextPage" class="time-filter">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // WebSocket连接
+      let ws = null;
+      
+      // API 基础 URL 配置
+      // 如果是独立部署 Worker，请在此填入 Worker URL，例如 "https://lastfm-api.your-name.workers.dev"
+      // 如果留空，则使用相对路径（适用于 Pages Functions）
+      const API_BASE_URL = "https://lastfm-scrobbler-api-vincent.chyu.org";
+
+      // 自动切换日夜模式
+      function toggleDarkModeBasedOnSystem() {
+        const body = document.body;
+
+        // 检查系统主题偏好
+        if (
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+        ) {
+          body.classList.add("dark-mode");
+        } else {
+          body.classList.remove("dark-mode");
+        }
+
+        // 重新加载所有图表以适应主题模式
+        reloadAllCharts();
+      }
+
+      // 监听系统主题变化
+      function watchSystemThemeChange() {
+        if (window.matchMedia) {
+          const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+          mediaQuery.addEventListener("change", toggleDarkModeBasedOnSystem);
+        }
+      }
+
+      // 检查是否处于暗色模式
+      function isDarkMode() {
+        return document.body.classList.contains("dark-mode");
+      }
+
+      // 获取图表的暗色模式配置
+      function getChartDarkModeOptions() {
+        if (isDarkMode()) {
+          return {
+            color: "#f0f0f0", // 文本颜色
+            borderColor: "#444444", // 边框颜色
+            backgroundColor: "#2c2c2c", // 背景颜色
+            gridColor: "rgba(255, 255, 255, 0.1)", // 网格线颜色
+            ticksColor: "#bdc3c7", // 刻度颜色
+          };
+        } else {
+          return {
+            color: "#2c3e50", // 文本颜色
+            borderColor: "#e9ecef", // 边框颜色
+            backgroundColor: "#ffffff", // 背景颜色
+            gridColor: "rgba(0, 0, 0, 0.05)", // 网格线颜色
+            ticksColor: "#7f8c8d", // 刻度颜色
+          };
+        }
+      }
+
+      // 重新加载所有图表以适应主题变化
+      function reloadAllCharts() {
+        // 重新初始化所有图表
+        initSourceChart();
+        initGenreChart();
+
+        // 重新初始化当前激活的图表
+        const trendRange =
+          document
+            .querySelector(".time-filter.active[data-range]")
+            ?.getAttribute("data-range") || 30;
+        initTrendChart(trendRange);
+
+        const artistType =
+          document
+            .querySelector(".time-filter.active[data-type]")
+            ?.getAttribute("data-type") || "plays";
+        initArtistChart(artistType);
+
+        const albumDays =
+          document
+            .querySelector(".time-filter.active[data-days]")
+            ?.getAttribute("data-days") || 30;
+        initAlbumChart(albumDays);
+
+        // 如果未上报页面可见，重新加载其内容以适应主题变化
+        const unscrobbledContainer = document.getElementById(
+          "unscrobbledContainer"
+        );
+        if (
+          unscrobbledContainer &&
+          unscrobbledContainer.style.display !== "none"
+        ) {
+          loadUnscrobbledRecords();
+        }
+
+        // 更新全屏模式下的图表背景色
+        updateFullscreenChartBackground();
+      }
+
+      // 更新全屏模式下的图表背景色
+      function updateFullscreenChartBackground() {
+        // 更新趋势图全屏背景
+        const trendFullscreenOverlay = document.getElementById(
+          "trendChartFullscreenOverlay"
+        );
+        if (trendFullscreenOverlay) {
+          const isDark = document.body.classList.contains("dark-mode");
+          const backgroundColor = isDark ? "#2c2c2c" : "white";
+          const textColor = isDark ? "#f0f0f0" : "#2c3e50";
+          trendFullscreenOverlay.querySelector("div").style.backgroundColor =
+            backgroundColor;
+          trendFullscreenOverlay.querySelector("div").style.color = textColor;
+        }
+
+        // 更新流派图全屏背景
+        const genreFullscreenOverlay = document.getElementById(
+          "genreChartFullscreenOverlay"
+        );
+        if (genreFullscreenOverlay) {
+          const isDark = document.body.classList.contains("dark-mode");
+          const backgroundColor = isDark ? "#2c2c2c" : "white";
+          const textColor = isDark ? "#f0f0f0" : "#2c3e50";
+          genreFullscreenOverlay.querySelector("div").style.backgroundColor =
+            backgroundColor;
+          genreFullscreenOverlay.querySelector("div").style.color = textColor;
+        }
+      }
+
+      // 连接到WebSocket服务器
+      function connectWebSocket() {
+        // 创建WebSocket连接
+        ws = new WebSocket("ws://" + window.location.host + "/ws");
+
+        // 连接打开时的处理
+        ws.onopen = function (event) {
+          console.log("WebSocket连接已建立");
+        };
+
+        // 收到消息时的处理
+        ws.onmessage = function (event) {
+          const data = JSON.parse(event.data);
+          if (data.type === "now_playing") {
+            // 更新正在播放的信息
+            updateNowPlaying(data.source, data.data);
+          } else if (data.type === "stop") {
+            // 隐藏正在播放的悬浮窗
+            document.getElementById("nowPlaying").style.display = "none";
+            // 清除进度更新定时器
+            if (progressInterval) {
+              clearInterval(progressInterval);
+              progressInterval = null;
+            }
+          }
+        };
+
+        // 连接关闭时的处理
+        ws.onclose = function (event) {
+          console.log("WebSocket连接已关闭");
+          // 清除进度更新定时器
+          if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+          }
+          // 5秒后尝试重新连接
+          setTimeout(connectWebSocket, 5000);
+        };
+
+        // 连接错误时的处理
+        ws.onerror = function (error) {
+          console.log("WebSocket连接出错:", error);
+          // 清除进度更新定时器
+          if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+          }
+        };
+      }
+
+      // 当前播放的曲目信息
+      let currentTrackInfo = null;
+      let currentSource = null;
+      let currentPosition = 0; // 当前播放位置
+      let trackDuration = 0; // 歌曲总时长
+      let progressInterval = null; // 进度更新定时器
+
+      // 格式化时间（秒转为mm:ss）
+      function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins.toString().padStart(2, "0")}:${secs
+          .toString()
+          .padStart(2, "0")}`;
+      }
+
+      // 更新播放进度显示
+      function updateProgressDisplay() {
+        if (trackDuration <= 0) return;
+
+        // 更新进度条
+        const progressPercent = (currentPosition / trackDuration) * 100;
+        document.getElementById("progressFill").style.width = `${Math.min(
+          progressPercent,
+          100
+        )}%`;
+
+        // 更新时间显示
+        document.getElementById("currentTime").textContent =
+          formatTime(currentPosition);
+        document.getElementById("totalTime").textContent =
+          formatTime(trackDuration);
+
+        // 更新当前位置
+        currentPosition += 1;
+
+        // 如果播放完成，清除定时器
+        if (currentPosition >= trackDuration) {
+          clearInterval(progressInterval);
+          progressInterval = null;
+        }
+      }
+
+      // 更新正在播放的信息
+      function updateNowPlaying(source, data) {
+        // 保存当前播放信息
+        currentTrackInfo = data;
+        currentSource = source;
+
+        // 重置播放进度
+        currentPosition = data.position || 0;
+        trackDuration = data.duration || 0;
+
+        // 清除之前的进度更新定时器
+        if (progressInterval) {
+          clearInterval(progressInterval);
+          progressInterval = null;
+        }
+
+        // 启动新的进度更新定时器（如果歌曲有持续时间）
+        if (trackDuration > 0) {
+          // 立即更新一次显示
+          updateProgressDisplay();
+          // 每秒更新一次进度
+          progressInterval = setInterval(updateProgressDisplay, 1000);
+        }
+
+        // 显示悬浮窗
+        document.getElementById("nowPlaying").style.display = "block";
+
+        // 根据来源更新信息
+        let sourceClass = "";
+        let sourceText = "";
+
+        if (source === "Audirvana") {
+          document.getElementById("trackTitle").textContent = " " + data.title;
+          document.getElementById("trackAlbum").textContent =
+            "《 " + data.album + "》";
+          document.getElementById("trackArtist").textContent =
+            " - " + data.artist;
+          sourceClass = "source-audirvana";
+          sourceText = "Audirvana";
+        } else if (source === "Roon") {
+          document.getElementById("trackTitle").textContent = " " + data.title;
+          document.getElementById("trackAlbum").textContent =
+            "《 " + data.album + " 》";
+          document.getElementById("trackArtist").textContent =
+            " - " + data.artist;
+          sourceClass = "source-roon";
+          sourceText = "Roon";
+        } else if (source === "Apple Music") {
+          document.getElementById("trackTitle").textContent = " " + data.title;
+          document.getElementById("trackAlbum").textContent =
+            "《 " + data.album + " 》";
+          document.getElementById("trackArtist").textContent =
+            " - " + data.artist;
+          sourceClass = "source-applemusic";
+          sourceText = "AppleMusic";
+        }
+
+        // 更新播放渠道显示样式
+        const trackSourceElement = document.getElementById("trackSource");
+        trackSourceElement.textContent = sourceText;
+        trackSourceElement.className = "play-source " + sourceClass;
+
+        // 更新喜欢状态指示器
+        updateFavoriteIndicators(data.apple_music, data.lastfm);
+
+        // 更新点赞按钮状态
+        updateFavoriteButtonState(data.apple_music);
+      }
+
+      // 更新喜欢状态指示器
+      function updateFavoriteIndicators(appleMusicFav, lastFmFav) {
+        const indicatorsContainer =
+          document.getElementById("favoriteIndicators");
+        indicatorsContainer.innerHTML = "";
+
+        if (appleMusicFav && lastFmFav) {
+          // 两个都喜欢，显示文本提示
+          const indicator = document.createElement("span");
+          indicator.className = "favorite-indicator";
+          indicator.innerHTML = "Apple Music 和 Last.fm 都喜欢";
+          indicator.title = "Apple Music 和 Last.fm 都喜欢";
+          indicatorsContainer.appendChild(indicator);
+        } else if (appleMusicFav) {
+          // 只有Apple Music喜欢，显示文本提示
+          const indicator = document.createElement("span");
+          indicator.className = "favorite-indicator";
+          indicator.innerHTML = "Apple Music 喜欢";
+          indicator.title = "Apple Music 喜欢";
+          indicatorsContainer.appendChild(indicator);
+        } else if (lastFmFav) {
+          // 只有Last.fm喜欢，显示文本提示
+          const indicator = document.createElement("span");
+          indicator.className = "favorite-indicator";
+          indicator.innerHTML = "Last.fm 喜欢";
+          indicator.title = "Last.fm 喜欢";
+          indicatorsContainer.appendChild(indicator);
+        }
+        // 如果两个都不喜欢，则不显示任何指示器
+      }
+
+      // 更新点赞按钮状态
+      function updateFavoriteButtonState(isLiked) {
+        const favoriteButton = document.getElementById("favoriteButton");
+        if (isLiked) {
+          favoriteButton.innerHTML = "★";
+          favoriteButton.className = "favorite-button liked";
+          favoriteButton.title = "已添加到喜欢";
+        } else {
+          favoriteButton.innerHTML = "⭐︎";
+          favoriteButton.className = "favorite-button unliked";
+          favoriteButton.title = "添加到喜欢";
+        }
+      }
+
+      // 点赞按钮点击事件处理
+      function handleFavoriteButtonClick() {
+        if (!currentTrackInfo || !currentSource) {
+          console.log("没有正在播放的曲目");
+          return;
+        }
+
+        const favoriteButton = document.getElementById("favoriteButton");
+        const isCurrentlyLiked = favoriteButton.classList.contains("liked");
+
+        // 如果已经收藏，则不执行任何操作
+        if (isCurrentlyLiked) {
+          return;
+        }
+
+        // 立即更新按钮状态，提供即时反馈
+        updateFavoriteButtonState(!isCurrentlyLiked);
+
+        // 发送请求到后端处理收藏逻辑
+        fetch(API_BASE_URL + "/api/favorite", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            artist: currentTrackInfo.artist,
+            album: currentTrackInfo.album,
+            track: currentTrackInfo.title,
+            source: currentSource,
+            favorite: !isCurrentlyLiked,
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 更新喜欢状态指示器
+            updateFavoriteIndicators(data.apple_music, data.lastfm);
+            // 更新按钮状态（以防后端返回的状态与前端不一致）
+            updateFavoriteButtonState(data.apple_music);
+          })
+          .catch((error) => {
+            console.error("收藏操作失败:", error);
+            // 恢复按钮原始状态
+            updateFavoriteButtonState(isCurrentlyLiked);
+            alert("收藏操作失败: " + error.message);
+          });
+      }
+
+      // 初始化正在播放悬浮窗的拖动和缩小功能
+      function initNowPlayingDrag() {
+        const nowPlaying = document.getElementById("nowPlaying");
+        const header = document.querySelector(".now-playing-header");
+        const minimizeHandle = document.querySelector(".minimize-handle");
+
+        if (!nowPlaying || !header || !minimizeHandle) return;
+
+        let isDragging = false;
+        let offsetX, offsetY;
+        let originalX, originalY;
+
+        // 鼠标按下事件（拖动）- 在整个标题栏都可以触发
+        header.addEventListener("mousedown", function (e) {
+          // 如果点击的是缩小按钮，则不触发拖动
+          if (e.target === minimizeHandle) return;
+
+          isDragging = true;
+          nowPlaying.classList.add("dragging");
+
+          // 获取悬浮窗当前位置
+          const rect = nowPlaying.getBoundingClientRect();
+          originalX = rect.left;
+          originalY = rect.top;
+
+          // 计算鼠标相对于悬浮窗的位置
+          offsetX = e.clientX - originalX;
+          offsetY = e.clientY - originalY;
+
+          // 防止文本选择
+          e.preventDefault();
+        });
+
+        // 鼠标移动事件（拖动）
+        document.addEventListener("mousemove", function (e) {
+          if (!isDragging) return;
+
+          // 计算悬浮窗的新位置
+          const x = e.clientX - offsetX;
+          const y = e.clientY - offsetY;
+
+          // 设置悬浮窗位置
+          nowPlaying.style.left = x + "px";
+          nowPlaying.style.top = y + "px";
+          nowPlaying.style.right = "auto";
+        });
+
+        // 鼠标释放事件（拖动）
+        document.addEventListener("mouseup", function () {
+          isDragging = false;
+          nowPlaying.classList.remove("dragging");
+        });
+
+        // 点击缩小/展开按钮
+        minimizeHandle.addEventListener("click", function () {
+          nowPlaying.classList.toggle("minimized");
+        });
+      }
+
+      // 初始化统计卡片
+      function initStats() {
+        fetch(API_BASE_URL + "/api/dashboard/stats")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            document.getElementById("totalPlays").textContent =
+              data.totalPlays.toLocaleString();
+            document.getElementById("totalTracks").textContent =
+              data.totalTracks.toLocaleString();
+            document.getElementById("totalArtists").textContent =
+              data.totalArtists.toLocaleString();
+            document.getElementById("totalAlbums").textContent =
+              data.totalAlbums.toLocaleString();
+          })
+          .catch((error) => {
+            console.error("获取统计数据失败:", error);
+            // 显示错误信息
+            document.getElementById("totalPlays").textContent = "错误";
+            document.getElementById("totalTracks").textContent = "错误";
+            document.getElementById("totalArtists").textContent = "错误";
+            document.getElementById("totalAlbums").textContent = "错误";
+          });
+      }
+
+      // 全局变量存储播放来源图表实例
+      let sourceChartInstance = null;
+
+      // 未上报记录相关变量
+      let currentUnscrobbledPage = 1;
+      const unscrobbledPageSize = 10;
+      let totalUnscrobbledRecords = 0;
+
+      // 初始化播放来源扇形图
+      function initSourceChart() {
+        const chartContainer =
+          document.getElementById("sourceChart").parentElement;
+
+        // 销毁之前的图表实例（如果存在）
+        if (sourceChartInstance) {
+          sourceChartInstance.destroy();
+          sourceChartInstance = null;
+        }
+
+        // 清理容器并重新创建canvas元素
+        chartContainer.innerHTML = '<canvas id="sourceChart"></canvas>';
+        const canvas = document.getElementById("sourceChart");
+        if (!canvas) {
+          console.error("找不到ID为sourceChart的canvas元素");
+          return;
+        }
+
+        const ctx = canvas.getContext("2d");
+
+        // 从后端获取数据
+        fetch(API_BASE_URL + "/api/dashboard/play-counts-by-source")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 获取暗色模式配置
+            const darkModeOptions = getChartDarkModeOptions();
+
+            // 处理数据
+            const sources = Object.keys(data);
+            const counts = sources.map((source) => data[source]);
+
+            // 定义颜色
+            const backgroundColors = [
+              "rgba(231, 76, 60, 0.7)", // Apple Music - 红色
+              "rgba(155, 89, 182, 0.7)", // Audirvana - 紫色
+              "rgba(127, 140, 141, 0.7)", // Roon - 灰色
+              "rgba(52, 152, 219, 0.7)", // 其他 - 蓝色
+            ];
+
+            const borderColors = [
+              "rgba(231, 76, 60, 1)",
+              "rgba(155, 89, 182, 1)",
+              "rgba(127, 140, 141, 1)",
+              "rgba(52, 152, 219, 1)",
+            ];
+
+            // 创建扇形图并保存实例
+            sourceChartInstance = new Chart(ctx, {
+              type: "doughnut",
+              data: {
+                labels: sources,
+                datasets: [
+                  {
+                    data: counts,
+                    backgroundColor: backgroundColors.slice(0, sources.length),
+                    borderColor: borderColors.slice(0, sources.length),
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: "right",
+                    labels: {
+                      color: darkModeOptions.color, // 暗色模式下的图例文字颜色
+                      boxWidth: 12,
+                      padding: 8,
+                      font: {
+                        size: 12,
+                      },
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        const label = context.label || "";
+                        const value = context.raw || 0;
+                        const total = context.dataset.data.reduce(
+                          (a, b) => a + b,
+                          0
+                        );
+                        const percentage = Math.round((value / total) * 100);
+                        return `${label}: ${value} (${percentage}%)`;
+                      },
+                    },
+                  },
+                },
+                cutout: "60%",
+              },
+            });
+          })
+          .catch((error) => {
+            console.error("获取播放来源数据失败:", error);
+            // 销毁之前的图表实例（如果存在）
+            if (sourceChartInstance) {
+              sourceChartInstance.destroy();
+              sourceChartInstance = null;
+            }
+            // 显示错误信息
+            const chartContainer =
+              document.getElementById("sourceChart").parentElement;
+            chartContainer.innerHTML =
+              '<div class="error">加载失败: ' + error.message + "</div>";
+          });
+      }
+
+      // 全屏元素和状态
+      let isTrendChartFullscreen = false;
+      let originalChartContainer = null;
+      let originalChartParent = null;
+      let originalChartStyle = null;
+
+      // 切换趋势图全屏显示
+      function toggleTrendChartFullscreen() {
+        const chartContainer =
+          document.querySelector("#trendChart").parentElement;
+        const fullscreenBtn = document.getElementById(
+          "trendChartFullscreenBtn"
+        );
+
+        if (!isTrendChartFullscreen) {
+          // 进入全屏模式
+          // 保存原始父元素和样式
+          originalChartParent = chartContainer.parentElement;
+          originalChartStyle = {
+            width: chartContainer.style.width,
+            height: chartContainer.style.height,
+            position: chartContainer.style.position,
+            zIndex: chartContainer.style.zIndex,
+          };
+
+          // 创建全屏遮罩
+          const fullscreenOverlay = document.createElement("div");
+          fullscreenOverlay.id = "trendChartFullscreenOverlay";
+          fullscreenOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+          `;
+
+          // 创建关闭按钮
+          const closeBtn = document.createElement("button");
+          closeBtn.innerHTML = "×";
+          closeBtn.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 36px;
+            cursor: pointer;
+            z-index: 10001;
+          `;
+
+          closeBtn.addEventListener("click", function () {
+            toggleTrendChartFullscreen();
+          });
+
+          // 创建包含图表的容器
+          const chartWrapper = document.createElement("div");
+          // 根据当前主题设置背景色
+          const isDark = document.body.classList.contains("dark-mode");
+          const backgroundColor = isDark ? "#2c2c2c" : "white";
+          const textColor = isDark ? "#f0f0f0" : "#2c3e50";
+          chartWrapper.style.cssText = `
+            width: 90%;
+            height: 90%;
+            background-color: ${backgroundColor};
+            border-radius: 8px;
+            padding: 20px;
+            color: ${textColor};
+          `;
+
+          // 将图表移动到新容器中
+          chartContainer.style.width = "100%";
+          chartContainer.style.height = "100%";
+          chartWrapper.appendChild(chartContainer);
+          fullscreenOverlay.appendChild(chartWrapper);
+          fullscreenOverlay.appendChild(closeBtn);
+          document.body.appendChild(fullscreenOverlay);
+
+          // 更新按钮文本
+          fullscreenBtn.textContent = "退出全屏";
+
+          // 标记为全屏状态
+          isTrendChartFullscreen = true;
+
+          // 重新渲染图表以适应新尺寸
+          if (window.trendChartInstance) {
+            window.trendChartInstance.resize();
+          }
+        } else {
+          // 退出全屏模式
+          // 移除全屏遮罩
+          const fullscreenOverlay = document.getElementById(
+            "trendChartFullscreenOverlay"
+          );
+          if (fullscreenOverlay) {
+            // 将图表移回原始位置
+            const chartWrapper = fullscreenOverlay.querySelector("div");
+            if (chartWrapper) {
+              originalChartParent.appendChild(chartContainer);
+            }
+
+            // 恢复原始样式
+            chartContainer.style.width = originalChartStyle.width || "";
+            chartContainer.style.height = originalChartStyle.height || "";
+            chartContainer.style.position = originalChartStyle.position || "";
+            chartContainer.style.zIndex = originalChartStyle.zIndex || "";
+
+            // 移除遮罩
+            document.body.removeChild(fullscreenOverlay);
+          }
+
+          // 更新按钮文本
+          fullscreenBtn.textContent = "全屏";
+
+          // 标记为非全屏状态
+          isTrendChartFullscreen = false;
+
+          // 重新渲染图表以适应原始尺寸
+          if (window.trendChartInstance) {
+            window.trendChartInstance.resize();
+          }
+        }
+      }
+
+      // 初始化趋势图
+      function initTrendChart(range = 30) {
+        const ctx = document.getElementById("trendChart").getContext("2d");
+
+        // 显示加载状态
+        const chartContainer =
+          document.querySelector("#trendChart").parentElement;
+        chartContainer.innerHTML = '<div class="loading">加载中...</div>';
+
+        // 重新创建canvas元素
+        const canvas = document.createElement("canvas");
+        canvas.id = "trendChart";
+        chartContainer.appendChild(canvas);
+        const newCtx = canvas.getContext("2d");
+
+        // 从后端获取数据，添加时间范围参数
+        fetch(`${API_BASE_URL}/api/dashboard/trend?range=${range}`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+
+            // 获取暗色模式配置
+            const darkModeOptions = getChartDarkModeOptions();
+
+            // 处理新的API响应格式，将数据转换为气泡图所需格式
+            const bubbleData = [];
+            // 存储每天的总播放次数，用于tooltip显示
+            const dailyTotals = {};
+
+            // 遍历hourly数据生成气泡图数据点
+            Object.keys(data.hourly).forEach((date) => {
+              const hourlyData = data.hourly[date];
+              // 计算当天总播放次数
+              dailyTotals[date] = hourlyData.total;
+
+              Object.keys(hourlyData.hourly).forEach((hour) => {
+                const playCount = hourlyData.hourly[hour];
+                // 只有播放次数大于0的数据才显示
+                if (playCount > -1) {
+                  // 确保日期格式正确，使用Date构造函数解析日期字符串
+                  const dateObj = new Date(date);
+                  // 调整到当天的中午12:00，避免时区问题导致的日期偏移
+                  dateObj.setHours(12, 0, 0, 0);
+                  bubbleData.push({
+                    x: dateObj, // 使用Date对象而不是时间戳
+                    y: parseInt(hour), // 小时（0-23）
+                    r: playCount, // 播放次数作为气泡半径
+                    date: date, // 添加原始日期字符串用于tooltip
+                  });
+                }
+              });
+            });
+
+            // 计算所有数据点中的最大播放次数，用于颜色映射
+            let maxPlayCount = 0;
+            bubbleData.forEach((point) => {
+              if (point.r > maxPlayCount) {
+                maxPlayCount = point.r;
+              }
+            });
+
+            // 颜色插值函数：播放次数多为暖色(红色)，播放次数少为冷色(蓝色)
+            function getColorForCount(count, maxCount) {
+              // 归一化值 (0-1)
+              const normalized = maxCount > 0 ? count / maxCount : 0;
+
+              // 暖色到冷色的渐变
+              // 红色 (255, 0, 0) 到 蓝色 (0, 0, 255)
+              // 反转逻辑：播放次数多显示红色，播放次数少显示蓝色
+              const r = Math.round(255 * normalized);
+              const g = 20;
+              const b = Math.round(255 * (1 - normalized));
+
+              return {
+                background: `rgba(${r}, ${g}, ${b}, 0.4)`,
+                border: `rgba(${r}, ${g}, ${b}, 1)`,
+              };
+            }
+
+            // 保存图表实例以便全屏时重新渲染
+            window.trendChartInstance = new Chart(newCtx, {
+              type: "bubble",
+              data: {
+                datasets: [
+                  {
+                    label: "播放记录",
+                    data: bubbleData,
+                    backgroundColor: function (context) {
+                      const count = context.raw.r;
+                      return getColorForCount(count, maxPlayCount).background;
+                    },
+                    borderColor: function (context) {
+                      const count = context.raw.r;
+                      return getColorForCount(count, maxPlayCount).border;
+                    },
+                    borderWidth: 1,
+                    pointStyle: "circle",
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                    labels: {
+                      color: darkModeOptions.color, // 暗色模式下的图例文字颜色
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      title: function (context) {
+                        // 显示日期和时间
+                        const point = context[0].raw;
+                        const date = new Date(point.x);
+                        const dateString = `${date.getFullYear()}-${(
+                          date.getMonth() + 1
+                        )
+                          .toString()
+                          .padStart(2, "0")}-${date
+                          .getDate()
+                          .toString()
+                          .padStart(2, "0")}`;
+                        const dailyTotal = dailyTotals[point.date] || 0;
+                        return `${dateString} ${point.y
+                          .toString()
+                          .padStart(2, "0")}:00 ( 当日总计: ${dailyTotal} )`;
+                      },
+                      label: function (context) {
+                        return `播放次数: ${context.raw.r}`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "time",
+                    time: {
+                      unit: "day",
+                      tooltipFormat: "yyyy-MM-dd",
+                      displayFormats: {
+                        day: "MM-dd",
+                      },
+                      // 确保时间轴从数据的最小值开始
+                      minUnit: "day",
+                    },
+                    title: {
+                      display: true,
+                      text: "日期",
+                      color: darkModeOptions.color, // 暗色模式下的标题颜色
+                    },
+                    grid: {
+                      color: darkModeOptions.gridColor, // 暗色模式下的网格线颜色
+                    },
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                      //stepSize: 1,
+                      maxRotation: 60,
+                      minRotation: 45,
+                      autoSkip: true,
+                      // 确保标签与数据点对齐
+                      source: "data",
+                      // 确保标签与数据点对齐
+                      align: "center",
+                    },
+                    // 添加边界设置以确保数据点完全显示
+                    bounds: "data",
+                  },
+                  y: {
+                    type: "linear",
+                    min: -1,
+                    max: 24.99,
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                      stepSize: 1,
+                      maxRotation: 60,
+                      minRotation: 45,
+                      callback: function (value) {
+                        // 显示小时格式 (HH:00)
+                        return `${value.toString().padStart(2, "0")}:00`;
+                      },
+                    },
+                    title: {
+                      display: true,
+                      text: "时间",
+                      color: darkModeOptions.color, // 暗色模式下的标题颜色
+                    },
+                    grid: {
+                      color: darkModeOptions.gridColor, // 暗色模式下的网格线颜色
+                    },
+                  },
+                },
+                elements: {
+                  point: {
+                    radius: function (context) {
+                      // 根据数据点的 r 值调整半径，添加缩放因子来调整大小
+                      const radius = context.raw.r;
+                      return Math.max(radius * 3, 2); // 最小半径为2
+                    },
+                  },
+                },
+              },
+            });
+          })
+          .catch((error) => {
+            console.error("获取趋势图数据失败:", error);
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+            // 销毁之前的图表实例（如果存在）
+            if (window.trendChartInstance) {
+              window.trendChartInstance.destroy();
+              window.trendChartInstance = null;
+            }
+            // 确保canvas元素存在后再替换innerHTML
+            const canvas = document.getElementById("trendChart");
+            if (canvas && canvas.parentElement) {
+              canvas.parentElement.innerHTML =
+                '<div class="error">加载失败: ' + error.message + "</div>";
+            }
+          });
+      }
+
+      // 初始化艺术家图表
+      function initArtistChart(type = "plays") {
+        const ctx = document.getElementById("artistChart").getContext("2d");
+
+        // 显示加载状态
+        const chartContainer =
+          document.querySelector("#artistChart").parentElement;
+        chartContainer.innerHTML = '<div class="loading">加载中...</div>';
+
+        // 重新创建canvas元素
+        const canvas = document.createElement("canvas");
+        canvas.id = "artistChart";
+        chartContainer.appendChild(canvas);
+        const newCtx = canvas.getContext("2d");
+
+        // 根据类型选择不同的API端点
+        const apiUrl =
+          type === "plays"
+            ? API_BASE_URL + "/api/dashboard/top-artists/plays?limit=10"
+            : API_BASE_URL + "/api/dashboard/top-artists/tracks?limit=10";
+
+        // 从后端获取数据
+        fetch(apiUrl)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+
+            // 处理数据
+            const artists = data.map((item) => item.artist);
+            const counts = data.map((item) =>
+              type === "plays" ? item.play_count : item.track_count
+            );
+
+            const label = type === "plays" ? "播放次数" : "曲目数";
+
+            // 获取暗色模式配置
+            const darkModeOptions = getChartDarkModeOptions();
+
+            new Chart(newCtx, {
+              type: "bar",
+              data: {
+                labels: artists,
+                datasets: [
+                  {
+                    label: label,
+                    data: counts,
+                    /* backgroundColor: [
+                            "rgba(52, 152, 219, 0.7)",
+                            "rgba(46, 204, 113, 0.7)",
+                            "rgba(231, 76, 60, 0.7)",
+                            "rgba(155, 89, 182, 0.7)",
+                            "rgba(241, 196, 15, 0.7)",
+                            "rgba(52, 152, 219, 0.7)",
+                            "rgba(46, 204, 113, 0.7)",
+                            "rgba(231, 76, 60, 0.7)",
+                            "rgba(155, 89, 182, 0.7)",
+                            "rgba(241, 196, 15, 0.7)",
+                          ],
+                          borderColor: [
+                            "rgba(52, 152, 219, 1)",
+                            "rgba(46, 204, 113, 1)",
+                            "rgba(231, 76, 60, 1)",
+                            "rgba(155, 89, 182, 1)",
+                            "rgba(241, 196, 15, 1)",
+                            "rgba(52, 152, 219, 1)",
+                            "rgba(46, 204, 113, 1)",
+                            "rgba(231, 76, 60, 1)",
+                            "rgba(155, 89, 182, 1)",
+                            "rgba(241, 196, 15, 1)",
+                          ], */
+                    /* backgroundColor: [
+                            "rgba(231, 76, 60, 0.9)", // 1 红
+                            "rgba(230, 126, 34, 0.9)", // 2 橙
+                            "rgba(241, 196, 15, 0.9)", // 3 黄
+                            "rgba(46, 204, 113, 0.85)", // 4 绿
+                            "rgba(0, 90, 140, 0.8)", // 5 靛蓝
+                            "rgba(52, 152, 219, 0.8)", // 6 蓝
+                            "rgba(110, 40, 140, 0.65)", // 7 深紫
+                            "rgba(165, 95, 190, 0.7)", // 8 紫
+                            "rgba(127, 140, 141, 0.6)", // 9 灰蓝
+                            "rgba(189, 195, 199, 0.55)", // 10 浅灰收尾
+                          ],
+                          borderColor: [
+                            "rgba(231, 76, 60, 1)",
+                            "rgba(230, 126, 34, 1)",
+                            "rgba(241, 196, 15, 1)",
+                            "rgba(46, 204, 113, 1)",
+                            "rgba(52, 152, 219, 1)",
+                            "rgba(52, 73, 94, 1)",
+                            "rgba(142, 68, 173, 1)",
+                            "rgba(155, 89, 182, 1)",
+                            "rgba(127, 140, 141, 1)",
+                            "rgba(189, 195, 199, 1)",
+                          ], */
+                    backgroundColor: [
+                      "rgba(231, 76, 60, 0.9)", // 1 红
+                      "rgba(230, 126, 34, 0.9)", // 2 橙
+                      "rgba(241, 196, 15, 0.9)", // 3 黄
+                      "rgba(46, 204, 113, 0.85)", // 4 绿
+                      "rgba(0, 200, 200, 0.8)", // 5 青
+                      "rgba(52, 152, 219, 0.8)", // 6 蓝
+                      "rgba(0, 90, 140, 0.75)", // 7 深蓝/靛蓝
+                      "rgba(142, 68, 173, 0.7)", // 8 紫
+                      "rgba(127, 140, 141, 0.65)", // 9 灰蓝
+                      "rgba(189, 195, 199, 0.6)", // 10 浅灰收尾
+                    ],
+                    borderColor: [
+                      "rgba(231, 76, 60, 1)",
+                      "rgba(230, 126, 34, 1)",
+                      "rgba(241, 196, 15, 1)",
+                      "rgba(46, 204, 113, 1)",
+                      "rgba(0, 200, 200, 1)",
+                      "rgba(52, 152, 219, 1)",
+                      "rgba(0, 90, 140, 1)",
+                      "rgba(142, 68, 173, 1)",
+                      "rgba(127, 140, 141, 1)",
+                      "rgba(189, 195, 199, 1)",
+                    ],
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                    labels: {
+                      color: darkModeOptions.color, // 暗色模式下的图例文字颜色
+                    },
+                  },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    grid: {
+                      color: darkModeOptions.gridColor, // 暗色模式下的网格线颜色
+                    },
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                    },
+                  },
+                  x: {
+                    grid: {
+                      display: false,
+                    },
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                      autoSkip: false,
+                      maxRotation: 45, // 恢复斜体显示
+                      callback: function (value) {
+                        // 截断过长的标签文本
+                        const label = this.getLabelForValue(value);
+                        if (label && label.length > 15) {
+                          return label.substring(0, 15) + "...";
+                        }
+                        return label;
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          })
+          .catch((error) => {
+            console.error("获取艺术家数据失败:", error);
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+            chartContainer.innerHTML =
+              '<div class="error">加载失败: ' + error.message + "</div>";
+          });
+      }
+
+      // 初始化热门专辑图表
+      function initAlbumChart(days = 7) {
+        const ctx = document.getElementById("albumChart").getContext("2d");
+
+        // 显示加载状态
+        const chartContainer =
+          document.querySelector("#albumChart").parentElement;
+        chartContainer.innerHTML = '<div class="loading">加载中...</div>';
+
+        // 重新创建canvas元素
+        const canvas = document.createElement("canvas");
+        canvas.id = "albumChart";
+        chartContainer.appendChild(canvas);
+        const newCtx = canvas.getContext("2d");
+
+        // 从后端获取数据
+        fetch(`${API_BASE_URL}/api/dashboard/top-albums?days=${days}&limit=10`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+
+            // 处理数据
+            const albums = data.map((item) => item.album);
+            const artists = data.map((item) => item.artist);
+            const counts = data.map((item) => item.play_count);
+
+            // 获取暗色模式配置
+            const darkModeOptions = getChartDarkModeOptions();
+
+            new Chart(newCtx, {
+              type: "bar",
+              data: {
+                labels: albums,
+                datasets: [
+                  {
+                    label: "播放次数",
+                    data: counts,
+                    backgroundColor: [
+                      "rgba(231, 76, 60, 0.9)", // 1 红
+                      "rgba(230, 126, 34, 0.9)", // 2 橙
+                      "rgba(241, 196, 15, 0.9)", // 3 黄
+                      "rgba(46, 204, 113, 0.85)", // 4 绿
+                      "rgba(0, 200, 200, 0.8)", // 5 青
+                      "rgba(52, 152, 219, 0.8)", // 6 蓝
+                      "rgba(0, 90, 140, 0.75)", // 7 深蓝/靛蓝
+                      "rgba(142, 68, 173, 0.7)", // 8 紫
+                      "rgba(127, 140, 141, 0.65)", // 9 灰蓝
+                      "rgba(189, 195, 199, 0.6)", // 10 浅灰收尾
+                    ],
+                    borderColor: [
+                      "rgba(231, 76, 60, 1)",
+                      "rgba(230, 126, 34, 1)",
+                      "rgba(241, 196, 15, 1)",
+                      "rgba(46, 204, 113, 1)",
+                      "rgba(0, 200, 200, 1)",
+                      "rgba(52, 152, 219, 1)",
+                      "rgba(0, 90, 140, 1)",
+                      "rgba(142, 68, 173, 1)",
+                      "rgba(127, 140, 141, 1)",
+                      "rgba(189, 195, 199, 1)",
+                    ],
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                indexAxis: "y", // 👈 水平条形图
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: false,
+                    labels: {
+                      color: darkModeOptions.color, // 暗色模式下的图例文字颜色
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      // 移除默认 label（第一行）
+                      /*   label: function () {
+                              return null;
+                            }, */
+                      // 用 title 回调显示专辑名（第一行）
+                      title: function (ctx) {
+                        const index = ctx[0].dataIndex; // tooltipItems 数组的第 0 个元素
+                        const artist = artists[index]; // 拿到对应作者
+                        return "《" + ctx[0].label + `》- ${artist}`; // 专辑名
+                      },
+                      // 用 afterLabel 回调显示作者 + 播放次数（第二行）
+                      /* afterLabel: function (ctx) {
+                              const artist = artists[ctx.dataIndex];
+                              //const count = counts[ctx.dataIndex];
+                              return `${artist}`;
+                            }, */
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    beginAtZero: true,
+                    grid: {
+                      color: darkModeOptions.gridColor, // 暗色模式下的网格线颜色
+                    },
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                    },
+                  },
+                  y: {
+                    grid: { display: false },
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                      autoSkip: false,
+                      //maxRotation: 60, // 恢复斜体显示
+                      //minRotation: 45, // 恢复斜体显示
+                      callback: function (value) {
+                        const label = this.getLabelForValue(value);
+                        if (label && label.length > 15) {
+                          return label.substring(0, 15) + "...";
+                        }
+                        return label;
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          })
+          .catch((error) => {
+            console.error("获取专辑数据失败:", error);
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+            chartContainer.innerHTML =
+              '<div class="error">加载失败: ' + error.message + "</div>";
+          });
+      }
+
+      // 全屏元素和状态 - 口味流派图表
+      let isGenreChartFullscreen = false;
+      let originalGenreChartContainer = null;
+      let originalGenreChartParent = null;
+      let originalGenreChartStyle = null;
+
+      // 切换口味流派图表全屏显示
+      function toggleGenreChartFullscreen() {
+        const chartContainer =
+          document.querySelector("#genreChart").parentElement;
+        const fullscreenBtn = document.getElementById(
+          "genreChartFullscreenBtn"
+        );
+
+        if (!isGenreChartFullscreen) {
+          // 进入全屏模式
+          // 保存原始父元素和样式
+          originalGenreChartParent = chartContainer.parentElement;
+          originalGenreChartStyle = {
+            width: chartContainer.style.width,
+            height: chartContainer.style.height,
+            position: chartContainer.style.position,
+            zIndex: chartContainer.style.zIndex,
+          };
+
+          // 创建全屏遮罩
+          const fullscreenOverlay = document.createElement("div");
+          fullscreenOverlay.id = "genreChartFullscreenOverlay";
+          fullscreenOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+          `;
+
+          // 创建关闭按钮
+          const closeBtn = document.createElement("button");
+          closeBtn.innerHTML = "×";
+          closeBtn.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 36px;
+            cursor: pointer;
+            z-index: 10001;
+          `;
+
+          closeBtn.addEventListener("click", function () {
+            toggleGenreChartFullscreen();
+          });
+
+          // 创建包含图表的容器
+          const chartWrapper = document.createElement("div");
+          // 根据当前主题设置背景色
+          const isDark = document.body.classList.contains("dark-mode");
+          const backgroundColor = isDark ? "#2c2c2c" : "white";
+          const textColor = isDark ? "#f0f0f0" : "#2c3e50";
+          chartWrapper.style.cssText = `
+            width: 90%;
+            height: 90%;
+            background-color: ${backgroundColor};
+            border-radius: 8px;
+            padding: 20px;
+            color: ${textColor};
+          `;
+
+          // 将图表移动到新容器中
+          chartContainer.style.width = "100%";
+          chartContainer.style.height = "100%";
+          chartWrapper.appendChild(chartContainer);
+          fullscreenOverlay.appendChild(chartWrapper);
+          fullscreenOverlay.appendChild(closeBtn);
+          document.body.appendChild(fullscreenOverlay);
+
+          // 更新按钮文本
+          fullscreenBtn.textContent = "退出全屏";
+
+          // 标记为全屏状态
+          isGenreChartFullscreen = true;
+
+          // 重新渲染图表以适应新尺寸
+          if (window.genreChartInstance) {
+            window.genreChartInstance.resize();
+          }
+        } else {
+          // 退出全屏模式
+          // 移除全屏遮罩
+          const fullscreenOverlay = document.getElementById(
+            "genreChartFullscreenOverlay"
+          );
+          if (fullscreenOverlay) {
+            // 将图表移回原始位置
+            const chartWrapper = fullscreenOverlay.querySelector("div");
+            if (chartWrapper) {
+              originalGenreChartParent.appendChild(chartContainer);
+            }
+
+            // 恢复原始样式
+            chartContainer.style.width = originalGenreChartStyle.width || "";
+            chartContainer.style.height = originalGenreChartStyle.height || "";
+            chartContainer.style.position =
+              originalGenreChartStyle.position || "";
+            chartContainer.style.zIndex = originalGenreChartStyle.zIndex || "";
+
+            // 移除遮罩
+            document.body.removeChild(fullscreenOverlay);
+          }
+
+          // 更新按钮文本
+          fullscreenBtn.textContent = "全屏";
+
+          // 标记为非全屏状态
+          isGenreChartFullscreen = false;
+
+          // 重新渲染图表以适应原始尺寸
+          if (window.genreChartInstance) {
+            window.genreChartInstance.resize();
+          }
+        }
+      }
+
+      // 初始化热门流派图表
+      function initGenreChart() {
+        const ctx = document.getElementById("genreChart").getContext("2d");
+
+        // 显示加载状态
+        const chartContainer =
+          document.querySelector("#genreChart").parentElement;
+        chartContainer.innerHTML = '<div class="loading">加载中...</div>';
+
+        // 重新创建canvas元素
+        const canvas = document.createElement("canvas");
+        canvas.id = "genreChart";
+        chartContainer.appendChild(canvas);
+        const newCtx = canvas.getContext("2d");
+
+        // 从后端获取数据
+        fetch(API_BASE_URL + "/api/dashboard/top-genres?limit=10")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+
+            // 处理数据
+            const genres = data.map((item) => item.track_genre_name);
+            const genresNameZhs = data.map((item) => item.genre_name_zh);
+            const counts = data.map((item) => item.track_genre_count);
+
+            // 定义颜色
+            const backgroundColors = [
+              "rgba(231, 76, 60, 0.8)", // 红
+              "rgba(230, 126, 34, 0.8)", // 橙
+              "rgba(241, 196, 15, 0.8)", // 黄
+              "rgba(46, 204, 113, 0.8)", // 绿
+              "rgba(0, 200, 200, 0.8)", // 青
+              "rgba(52, 152, 219, 0.8)", // 蓝
+              "rgba(0, 90, 140, 0.8)", // 深蓝
+              "rgba(142, 68, 173, 0.8)", // 紫
+              "rgba(127, 140, 141, 0.8)", // 灰
+              "rgba(189, 195, 199, 0.8)", // 浅灰
+            ];
+
+            const borderColors = [
+              "rgba(231, 76, 60, 1)",
+              "rgba(230, 126, 34, 1)",
+              "rgba(241, 196, 15, 1)",
+              "rgba(46, 204, 113, 1)",
+              "rgba(0, 200, 200, 1)",
+              "rgba(52, 152, 219, 1)",
+              "rgba(0, 90, 140, 1)",
+              "rgba(142, 68, 173, 1)",
+              "rgba(127, 140, 141, 1)",
+              "rgba(189, 195, 199, 1)",
+            ];
+
+            // 原始数据
+            let dataset = genres.map((g, i) => ({
+              genre: g,
+              count: counts[i],
+              bg: backgroundColors[i],
+              border: borderColors[i],
+              zh: genresNameZhs[i],
+            }));
+
+            // Fisher-Yates 洗牌算法随机打乱
+            for (let i = dataset.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [dataset[i], dataset[j]] = [dataset[j], dataset[i]];
+            }
+
+            // 拆分回数组
+            const shuffledGenres = dataset.map((item) => item.genre);
+            const shuffledCounts = dataset.map((item) => item.count);
+            const shuffledBackgroundColors = dataset.map((item) => item.bg);
+            const shuffledBorderColors = dataset.map((item) => item.border);
+            const shuffledGenresNameZhs = dataset.map((item) => item.zh);
+
+            // 获取暗色模式配置
+            const darkModeOptions = getChartDarkModeOptions();
+
+            // 保存图表实例以便全屏时重新渲染
+            window.genreChartInstance = new Chart(newCtx, {
+              type: "polarArea",
+              data: {
+                labels: shuffledGenres,
+                datasets: [
+                  {
+                    label: "播放次数",
+                    data: shuffledCounts,
+                    backgroundColor: shuffledBackgroundColors,
+                    borderColor: shuffledBorderColors,
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: "left",
+                    labels: {
+                      color: darkModeOptions.color, // 暗色模式下的图例文字颜色
+                      font: {
+                        size: 10, // 字体变小
+                      },
+                      boxWidth: 9, // 小方块变小
+                      padding: 6, // legend 项之间的间距缩小
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      title: function (ctx) {
+                        const index = ctx[0].dataIndex;
+                        const genre_name_zh = shuffledGenresNameZhs[index];
+                        return ctx[0].label + `（ ${genre_name_zh} ）`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  r: {
+                    pointLabels: {
+                      color: darkModeOptions.color, // 暗色模式下的点标签颜色
+                      display: true,
+                      centerPointLabels: true,
+                      font: {
+                        size: 8,
+                      },
+                    },
+                    ticks: {
+                      color: darkModeOptions.ticksColor, // 暗色模式下的刻度颜色
+                      backdropColor: isDarkMode()
+                        ? "rgba(44, 44, 44, 0.8)"
+                        : "rgba(0, 0, 0, 0.05)",
+                    },
+                    // max: Math.max(...shuffledCounts) * 1.1, // 扩大 20% 半径
+                  },
+                },
+              },
+            });
+          })
+          .catch((error) => {
+            console.error("获取流派数据失败:", error);
+            // 移除加载状态
+            const loadingElement = chartContainer.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+            // 销毁之前的图表实例（如果存在）
+            if (window.genreChartInstance) {
+              window.genreChartInstance.destroy();
+              window.genreChartInstance = null;
+            }
+            // 确保canvas元素存在后再替换innerHTML
+            const canvas = document.getElementById("genreChart");
+            if (canvas && canvas.parentElement) {
+              canvas.parentElement.innerHTML =
+                '<div class="error">加载失败: ' + error.message + "</div>";
+            }
+          });
+      }
+
+      // 初始化最近播放列表
+      function initRecentPlays() {
+        const recentPlaysList = document.getElementById("recentPlaysList");
+        recentPlaysList.innerHTML = '<div class="loading">加载中...</div>';
+
+        fetch(API_BASE_URL + "/api/recent-plays?limit=10")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 移除加载状态
+            const loadingElement = recentPlaysList.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+
+            if (data.length === 0) {
+              recentPlaysList.innerHTML = '<div class="loading">暂无数据</div>';
+              return;
+            }
+
+            data.forEach((item, index) => {
+              const rankingItem = document.createElement("li");
+              rankingItem.className = "ranking-item";
+
+              const playTime = new Date(item.play_time);
+              const timeString = playTime.toLocaleTimeString("zh-CN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              });
+
+              // 根据来源设置样式
+              let sourceClass = "";
+              let sourceText = "";
+              switch (item.source?.toLowerCase()) {
+                case "apple music":
+                  sourceClass = "source-applemusic";
+                  sourceText = "AppleMusic";
+                  break;
+                case "audirvana":
+                case "au":
+                  sourceClass = "source-audirvana";
+                  sourceText = "Audirvana";
+                  break;
+                case "roon":
+                  sourceClass = "source-roon";
+                  sourceText = "Roon";
+                  break;
+                default:
+                  sourceClass = "";
+                  sourceText = item.source || "Unknown";
+              }
+
+              rankingItem.innerHTML = `
+                                  <div class="rank-number rank-other">${
+                                    index + 1
+                                  }</div>
+                                  <div class="track-info">
+                                      <div class="track-title">${
+                                        item.track
+                                      }</div>
+                                      <div class="track-artist">${
+                                        item.artist
+                                      } - ${item.album}</div>
+                                  </div>
+                                  <div style="display: flex; flex-direction: column; align-items: flex-end; margin-left: 10px;">
+                                    <div class="play-source ${sourceClass}">${sourceText}</div>
+                                    <div class="play-count">${timeString}</div>
+                                  </div>
+                              `;
+
+              // 添加点击事件处理
+              rankingItem.addEventListener('click', function() {
+                showTrackDetails(item.artist, item.album, item.track);
+              });
+              rankingItem.style.cursor = 'pointer';
+
+              recentPlaysList.appendChild(rankingItem);
+            });
+
+            // 调整两个列表的高度
+            adjustRankingListsHeight();
+          })
+          .catch((error) => {
+            console.error("获取最近播放数据失败:", error);
+            // 移除加载状态
+            const loadingElement = recentPlaysList.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+            recentPlaysList.innerHTML =
+              '<div class="error">加载失败: ' + error.message + "</div>";
+          });
+      }
+
+      // 定期刷新最近播放列表
+      function refreshRecentPlays() {
+        const recentPlaysList = document.getElementById("recentPlaysList");
+
+        fetch(API_BASE_URL + "/api/recent-plays?limit=10")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            recentPlaysList.innerHTML = "";
+
+            if (data.length === 0) {
+              recentPlaysList.innerHTML = '<div class="loading">暂无数据</div>';
+              return;
+            }
+
+            data.forEach((item, index) => {
+              const rankingItem = document.createElement("li");
+              rankingItem.className = "ranking-item";
+
+              const playTime = new Date(item.play_time);
+              const timeString = playTime.toLocaleTimeString("zh-CN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              });
+
+              // 根据来源设置样式
+              let sourceClass = "";
+              let sourceText = "";
+              switch (item.source?.toLowerCase()) {
+                case "apple music":
+                  sourceClass = "source-applemusic";
+                  sourceText = "AppleMusic";
+                  break;
+                case "audirvana":
+                case "au":
+                  sourceClass = "source-audirvana";
+                  sourceText = "Audirvana";
+                  break;
+                case "roon":
+                  sourceClass = "source-roon";
+                  sourceText = "Roon";
+                  break;
+                default:
+                  sourceClass = "";
+                  sourceText = item.source || "Unknown";
+              }
+
+              rankingItem.innerHTML = `
+                                  <div class="rank-number rank-other">${
+                                    index + 1
+                                  }</div>
+                                  <div class="track-info">
+                                      <div class="track-title">${
+                                        item.track
+                                      }</div>
+                                      <div class="track-artist">${
+                                        item.artist
+                                      } - ${item.album}</div>
+                                  </div>
+                                  <div style="display: flex; flex-direction: column; align-items: flex-end; margin-left: 10px;">
+                                    <div class="play-source ${sourceClass}">${sourceText}</div>
+                                    <div class="play-count">${timeString}</div>
+                                  </div>
+                              `;
+
+              // 添加点击事件处理
+              rankingItem.addEventListener('click', function() {
+                showTrackDetails(item.artist, item.album, item.track);
+              });
+              rankingItem.style.cursor = 'pointer';
+
+              recentPlaysList.appendChild(rankingItem);
+            });
+
+            // 调整两个列表的高度
+            adjustRankingListsHeight();
+          })
+          .catch((error) => {
+            console.error("刷新最近播放数据失败:", error);
+          });
+      }
+
+      // 初始化排行榜
+      function initRanking(rankingType = "all") {
+        const rankingList = document.getElementById("rankingList");
+        rankingList.innerHTML = '<div class="loading">加载中...</div>';
+
+        // 根据排名类型调整API请求
+        let apiUrl = API_BASE_URL + "/api/track-play-counts?limit=10&offset=0";
+        if (rankingType === "month") {
+          // 月排行榜
+          apiUrl =
+            API_BASE_URL + "/api/track-play-counts/period?limit=10&offset=0&period=month";
+        } else if (rankingType === "week") {
+          // 周排行榜
+          apiUrl =
+            API_BASE_URL + "/api/track-play-counts/period?limit=10&offset=0&period=week";
+        }
+
+        fetch(apiUrl)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            // 移除加载状态
+            const loadingElement = rankingList.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+
+            if (data.length === 0) {
+              rankingList.innerHTML = '<div class="loading">暂无数据</div>';
+              return;
+            }
+
+            data.forEach((item, index) => {
+              const rankingItem = document.createElement("li");
+              rankingItem.className = "ranking-item";
+
+              const rank = index + 1;
+              let rankClass = "rank-other";
+              if (rank === 1) rankClass = "rank-1";
+              else if (rank === 2) rankClass = "rank-2";
+              else if (rank === 3) rankClass = "rank-3";
+
+              rankingItem.innerHTML = `
+                                  <div class="rank-number ${rankClass}">${rank}</div>
+                                  <div class="track-info">
+                                      <div class="track-title">${item.track}</div>
+                                      <div class="track-artist">${item.artist} - ${item.album}</div>
+                                  </div>
+                                  <div class="play-count">${item.play_count} 次</div>
+                              `;
+
+              // 添加点击事件处理
+              rankingItem.addEventListener('click', function() {
+                showTrackDetails(item.artist, item.album, item.track);
+              });
+              rankingItem.style.cursor = 'pointer';
+
+              rankingList.appendChild(rankingItem);
+            });
+
+            // 调整两个列表的高度
+            adjustRankingListsHeight();
+          })
+          .catch((error) => {
+            console.error("获取排行榜数据失败:", error);
+            // 移除加载状态
+            const loadingElement = rankingList.querySelector(".loading");
+            if (loadingElement) {
+              loadingElement.remove();
+            }
+            rankingList.innerHTML =
+              '<div class="error">加载失败: ' + error.message + "</div>";
+          });
+      }
+
+      // 调整排行榜列表高度，使两个卡片保持一致
+      function adjustRankingListsHeight() {
+        const recentPlaysList = document.getElementById("recentPlaysList");
+        const rankingList = document.getElementById("rankingList");
+
+        // 重置高度
+        recentPlaysList.style.height = "auto";
+        rankingList.style.height = "auto";
+
+        // 获取两个列表的最大高度
+        const recentPlaysHeight = recentPlaysList.offsetHeight;
+        const rankingHeight = rankingList.offsetHeight;
+        const maxHeight = Math.max(recentPlaysHeight, rankingHeight);
+
+        // 设置两个列表的高度为最大高度
+        if (maxHeight > 0) {
+          // 只在需要时设置固定高度，避免影响布局
+          if (recentPlaysHeight !== rankingHeight) {
+            recentPlaysList.style.height = maxHeight + "px";
+            rankingList.style.height = maxHeight + "px";
+          }
+        }
+      }
+
+      // 加载未上报记录
+      function loadUnscrobbledRecords() {
+        const content = document.getElementById("unscrobbledContent");
+        content.innerHTML = '<div class="loading">加载中...</div>';
+
+        const offset = (currentUnscrobbledPage - 1) * unscrobbledPageSize;
+
+        // 获取未上报记录总数
+        fetch(API_BASE_URL + "/api/unscrobbled-records/count")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            totalUnscrobbledRecords = data.count;
+            updatePagination();
+          })
+          .catch((error) => {
+            console.error("获取未上报记录总数失败:", error);
+          });
+
+        // 获取未上报记录
+        fetch(
+          `${API_BASE_URL}/api/unscrobbled-records?limit=${unscrobbledPageSize}&offset=${offset}`
+        )
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            renderUnscrobbledRecords(data);
+          })
+          .catch((error) => {
+            console.error("获取未上报记录失败:", error);
+            content.innerHTML =
+              '<div class="error">加载失败: ' + error.message + "</div>";
+          });
+      }
+
+      // 渲染未上报记录
+      function renderUnscrobbledRecords(records) {
+        const content = document.getElementById("unscrobbledContent");
+
+        if (records.length === 0) {
+          content.innerHTML = '<div class="loading">暂无未上报记录</div>';
+          return;
+        }
+
+        // 检查是否处于暗色模式
+        const isDark = document.body.classList.contains("dark-mode");
+
+        // 根据主题设置颜色
+        const headerBgColor = isDark ? "#3a3a3a" : "#f1f3f9";
+        const borderColor = isDark ? "#444444" : "#e9ecef";
+        const rowBorderColor = isDark ? "#444444" : "#e9ecef";
+        const textColor = isDark ? "#f0f0f0" : "#2c3e50";
+
+        let html = `<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; color: ${textColor};">`;
+        html += `<thead><tr style="background-color: ${headerBgColor}; text-align: left;">`;
+        html += `<th style="padding: 12px; border-bottom: 2px solid ${borderColor};"></th>`;
+        html += `<th style="padding: 12px; border-bottom: 2px solid ${borderColor};">曲目</th>`;
+        html += `<th style="padding: 12px; border-bottom: 2px solid ${borderColor};">艺术家</th>`;
+        html += `<th style="padding: 12px; border-bottom: 2px solid ${borderColor};">专辑</th>`;
+        html += `<th style="padding: 12px; border-bottom: 2px solid ${borderColor};">播放时间</th>`;
+        html += `<th style="padding: 12px; border-bottom: 2px solid ${borderColor};">来源</th>`;
+        html += "</tr></thead><tbody>";
+
+        records.forEach((record) => {
+          const playTime = new Date(record.play_time);
+          const timeString = playTime.toLocaleString("zh-CN");
+
+          // 根据来源设置样式
+          let sourceClass = "";
+          let sourceText = "";
+          switch (record.source?.toLowerCase()) {
+            case "apple music":
+              sourceClass = "source-applemusic";
+              sourceText = "AppleMusic";
+              break;
+            case "audirvana":
+            case "au":
+              sourceClass = "source-audirvana";
+              sourceText = "Audirvana";
+              break;
+            case "roon":
+              sourceClass = "source-roon";
+              sourceText = "Roon";
+              break;
+            default:
+              sourceClass = "";
+              sourceText = record.source || "Unknown";
+          }
+
+          html += `<tr style="border-bottom: 1px solid ${rowBorderColor};">`;
+          html += `<td style="padding: 12px;"><input type="checkbox" class="record-checkbox" data-id="${record.id}"></td>`;
+          html += `<td style="padding: 12px;">${record.track}</td>`;
+          html += `<td style="padding: 12px;">${record.artist}</td>`;
+          html += `<td style="padding: 12px;">${record.album}</td>`;
+          html += `<td style="padding: 12px;">${timeString}</td>`;
+          html += `<td style="padding: 12px;"><div class="play-source ${sourceClass}" style="display: inline-block;">${sourceText}</div></td>`;
+          html += "</tr>";
+        });
+
+        html += "</tbody></table></div>";
+        content.innerHTML = html;
+      }
+
+      // 更新分页信息
+      function updatePagination() {
+        const totalPages = Math.ceil(
+          totalUnscrobbledRecords / unscrobbledPageSize
+        );
+        const pageInfo = document.getElementById("pageInfo");
+        const prevBtn = document.getElementById("prevPage");
+        const nextBtn = document.getElementById("nextPage");
+
+        // 检查是否处于暗色模式
+        const isDark = document.body.classList.contains("dark-mode");
+
+        // 设置分页信息文本颜色
+        if (pageInfo) {
+          pageInfo.style.color = isDark ? "var(--text-primary)" : "#2c3e50";
+        }
+
+        if (totalUnscrobbledRecords === 0) {
+          pageInfo.textContent = "无记录";
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        pageInfo.textContent = `第 ${currentUnscrobbledPage} 页，共 ${totalPages} 页 (${totalUnscrobbledRecords} 条记录)`;
+        prevBtn.disabled = currentUnscrobbledPage === 1;
+        nextBtn.disabled = currentUnscrobbledPage === totalPages;
+      }
+
+      // 同步选中的记录
+      function syncSelectedRecords() {
+        const checkboxes = document.querySelectorAll(
+          ".record-checkbox:checked"
+        );
+        if (checkboxes.length === 0) {
+          alert("请先选择要同步的记录");
+          return;
+        }
+
+        const ids = Array.from(checkboxes).map((cb) => parseInt(cb.dataset.id));
+
+        // 禁用按钮并显示加载状态
+        const syncBtn = document.getElementById("syncSelectedBtn");
+        const originalText = syncBtn.textContent;
+        syncBtn.textContent = "同步中...";
+        syncBtn.disabled = true;
+
+        fetch(API_BASE_URL + "/api/unscrobbled-records/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ids: ids }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            if (data.failed_count > 0) {
+              alert(
+                `同步完成: ${data.success_count} 条记录同步成功, ${data.failed_count} 条记录同步失败`
+              );
+              // 显示失败的记录
+              if (data.failed_records && data.failed_records.length > 0) {
+                let failedList = "同步失败的记录:\n";
+                data.failed_records.forEach((record) => {
+                  failedList += `- ${record.track} - ${record.artist}\n`;
+                });
+                console.log(failedList);
+              }
+            } else {
+              alert(`同步完成: ${data.success_count} 条记录同步成功`);
+            }
+
+            // 重新加载未上报记录
+            loadUnscrobbledRecords();
+          })
+          .catch((error) => {
+            console.error("同步记录失败:", error);
+            alert("同步记录失败: " + error.message);
+          })
+          .finally(() => {
+            // 恢复按钮状态
+            syncBtn.textContent = originalText;
+            syncBtn.disabled = false;
+          });
+      }
+
+      // 定时更新函数
+      function createAutoUpdater(fetchFunction, interval = 60000) {
+        return setInterval(fetchFunction, interval);
+      }
+
+      // 公共的定时更新函数
+      function createDashboardAutoUpdater() {
+        // 存储所有定时器的ID
+        const timers = [];
+
+        // 清除所有定时器
+        function clearAllTimers() {
+          timers.forEach((timerId) => clearInterval(timerId));
+          timers.length = 0; // 清空数组
+        }
+
+        // 添加定时器到数组
+        function addTimer(timerId) {
+          timers.push(timerId);
+        }
+
+        // 返回公共接口
+        return {
+          clearAllTimers,
+          addTimer,
+        };
+      }
+
+      // 创建全局的定时更新器实例
+      const dashboardUpdater = createDashboardAutoUpdater();
+
+      // 初始化拖动功能
+      function initDraggableCards() {
+        // 最近播放和播放排行榜不再支持拖动
+      }
+
+      // 页面加载完成后初始化
+      document.addEventListener("DOMContentLoaded", function () {
+        // 自动切换日夜模式
+        toggleDarkModeBasedOnSystem();
+
+        // 监听系统主题变化
+        watchSystemThemeChange();
+
+        // 初始化各个组件
+        initStats();
+        initSourceChart(); // 初始化播放来源扇形图
+        initTrendChart(30); // 默认加载30天数据
+        initArtistChart("plays"); // 默认按播放次数排序
+        initAlbumChart(30); // 默认加载30天数据
+        initGenreChart(); // 初始化热门流派图表
+        initRanking("all"); // 默认总排行
+        initRecentPlays(); // 初始化最近播放列表
+
+        // 连接到WebSocket服务器
+        // connectWebSocket(); // 静态版本不支持 WebSocket
+
+        // 清除之前的定时器
+        dashboardUpdater.clearAllTimers();
+
+        // 设置定时器，每5秒刷新一次各个组件
+        dashboardUpdater.addTimer(createAutoUpdater(initStats, 60000)); // 每60秒更新统计卡片
+        dashboardUpdater.addTimer(createAutoUpdater(initSourceChart, 60000)); // 每60秒更新播放来源扇形图
+        dashboardUpdater.addTimer(
+          createAutoUpdater(
+            () =>
+              initTrendChart(
+                document
+                  .querySelector(".time-filter.active[data-range]")
+                  .getAttribute("data-range") || 30
+              ),
+            60000
+          )
+        ); // 每60秒更新趋势图
+        dashboardUpdater.addTimer(
+          createAutoUpdater(
+            () =>
+              initArtistChart(
+                document
+                  .querySelector(".time-filter.active[data-type]")
+                  .getAttribute("data-type") || "plays"
+              ),
+            60000
+          )
+        ); // 每60秒更新艺术家图表
+        dashboardUpdater.addTimer(
+          createAutoUpdater(
+            () =>
+              initAlbumChart(
+                document
+                  .querySelector(".time-filter.active[data-days]")
+                  .getAttribute("data-days") || 30
+              ),
+            60000
+          )
+        ); // 每60秒更新专辑图表
+        dashboardUpdater.addTimer(createAutoUpdater(initGenreChart, 60000)); // 每60秒更新流派图表
+        dashboardUpdater.addTimer(
+          createAutoUpdater(
+            () =>
+              initRanking(
+                document
+                  .querySelector(".time-filter.active[data-ranking]")
+                  .getAttribute("data-ranking") || "all"
+              ),
+            60000
+          )
+        ); // 每60秒更新排行榜
+        dashboardUpdater.addTimer(createAutoUpdater(refreshRecentPlays, 60000)); // 每60秒更新最近播放列表
+
+        // 添加时间过滤器点击事件
+        document.querySelectorAll(".time-filter").forEach((filter) => {
+          // 跳过全屏按钮
+          if (
+            filter.id === "trendChartFullscreenBtn" ||
+            filter.id === "genreChartFullscreenBtn"
+          )
+            return;
+
+          filter.addEventListener("click", function () {
+            // 移除同组其他过滤器的active类
+            const parent = this.parentElement;
+            parent.querySelectorAll(".time-filter").forEach((f) => {
+              // 跳过全屏按钮
+              if (
+                f.id === "trendChartFullscreenBtn" ||
+                f.id === "genreChartFullscreenBtn"
+              )
+                return;
+              f.classList.remove("active");
+            });
+
+            // 为当前过滤器添加active类
+            this.classList.add("active");
+
+            // 根据过滤器更新数据
+            const filterType = parent.classList.contains("card-header")
+              ? parent.parentElement.querySelector(".card-title").textContent
+              : parent.closest(".chart-card")
+              ? parent.closest(".chart-card").querySelector(".card-title")
+                  .textContent
+              : parent.closest(".ranking-card").querySelector(".card-title")
+                  .textContent;
+
+            if (filterType.includes("播放趋势")) {
+              // 更新趋势图
+              const range = this.getAttribute("data-range");
+              initTrendChart(range);
+            } else if (filterType.includes("热门艺术家")) {
+              // 更新艺术家图表
+              const type = this.getAttribute("data-type");
+              initArtistChart(type);
+            } else if (filterType.includes("热门专辑")) {
+              // 更新专辑图表
+              const days = this.getAttribute("data-days");
+              initAlbumChart(days);
+            } else if (filterType.includes("播放排行榜")) {
+              // 更新排行榜
+              const ranking = this.getAttribute("data-ranking");
+              initRanking(ranking);
+            }
+          });
+        });
+
+        // 全屏按钮点击事件
+        document
+          .getElementById("trendChartFullscreenBtn")
+          .addEventListener("click", function () {
+            toggleTrendChartFullscreen();
+          });
+
+        // 口味流派图表全屏按钮点击事件
+        document
+          .getElementById("genreChartFullscreenBtn")
+          .addEventListener("click", function () {
+            toggleGenreChartFullscreen();
+          });
+
+        // 页面加载完成后调整排行榜列表高度
+        setTimeout(adjustRankingListsHeight, 1000);
+
+        // 初始化拖动功能
+        initDraggableCards();
+
+        // 初始化正在播放悬浮窗的拖动功能
+        initNowPlayingDrag();
+
+        // 未上报标签页点击事件
+        document
+          .getElementById("unscrobbledTab")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+
+            // 隐藏其他内容
+            document.querySelector(".stats-container").style.display = "none";
+            document.querySelector(".charts-container").style.display = "none";
+            document.querySelector(".rankings-container").style.display =
+              "none";
+
+            // 显示未上报容器
+            document.getElementById("unscrobbledContainer").style.display =
+              "block";
+
+            // 更新导航栏活动状态
+            document.querySelectorAll(".nav-links a").forEach((link) => {
+              link.classList.remove("active");
+            });
+            this.classList.add("active");
+
+            // 加载未上报记录
+            currentUnscrobbledPage = 1;
+            loadUnscrobbledRecords();
+          });
+
+        // 刷新按钮点击事件
+        document
+          .getElementById("refreshUnscrobbledBtn")
+          .addEventListener("click", function () {
+            loadUnscrobbledRecords();
+          });
+
+        // 同步选中按钮点击事件
+        document
+          .getElementById("syncSelectedBtn")
+          .addEventListener("click", function () {
+            syncSelectedRecords();
+          });
+
+        // 分页按钮事件
+        document
+          .getElementById("prevPage")
+          .addEventListener("click", function () {
+            if (currentUnscrobbledPage > 1) {
+              currentUnscrobbledPage--;
+              loadUnscrobbledRecords();
+            }
+          });
+
+        document
+          .getElementById("nextPage")
+          .addEventListener("click", function () {
+            const totalPages = Math.ceil(
+              totalUnscrobbledRecords / unscrobbledPageSize
+            );
+            if (currentUnscrobbledPage < totalPages) {
+              currentUnscrobbledPage++;
+              loadUnscrobbledRecords();
+            }
+          });
+
+        // 点赞按钮点击事件
+        document
+          .getElementById("favoriteButton")
+          .addEventListener("click", handleFavoriteButtonClick);
+      });
+
+      // 添加查看详情模态框相关函数
+      // 显示模态框
+      function showModal(modalId) {
+        document.getElementById(modalId).style.display = "block";
+      }
+
+      // 隐藏模态框
+      function hideModal(modalId) {
+        document.getElementById(modalId).style.display = "none";
+      }
+
+      // 获取并显示曲目详细信息
+      function showTrackDetails(artist, album, trackName) {
+        // 显示加载状态
+        const modalContent = document.querySelector("#trackDetailsModal .modal-content");
+        modalContent.innerHTML = `<div class="loading">加载中...</div>`;
+        showModal("trackDetailsModal");
+
+        // 从后端获取详细信息
+        fetch(`${API_BASE_URL}/api/track?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&trackName=${encodeURIComponent(trackName)}`)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error("网络响应错误");
+            }
+            return response.json();
+          })
+          .then(data => {
+            // 渲染详细信息
+            renderTrackDetails(data);
+          })
+          .catch(error => {
+            console.error("获取曲目详情失败:", error);
+            modalContent.innerHTML = `<div class="error">加载失败: ${error.message}</div>`;
+          });
+      }
+
+      // 渲染曲目详细信息
+      function renderTrackDetails(track) {
+        const modalContent = document.querySelector("#trackDetailsModal .modal-content");
+        
+        // 格式化播放时间
+        const formatDuration = (seconds) => {
+          const mins = Math.floor(seconds / 60);
+          const secs = Math.floor(seconds % 60);
+          return `${mins}:${secs.toString().padStart(2, "0")}`;
+        };
+
+        // 根据来源设置样式
+        let sourceClass = "";
+        let sourceText = "";
+        switch (track.source?.toLowerCase()) {
+          case "apple music":
+            sourceClass = "source-applemusic";
+            sourceText = "AppleMusic";
+            break;
+          case "audirvana":
+          case "au":
+            sourceClass = "source-audirvana";
+            sourceText = "Audirvana";
+            break;
+          case "roon":
+            sourceClass = "source-roon";
+            sourceText = "Roon";
+            break;
+          default:
+            sourceClass = "";
+            sourceText = track.source || "Unknown";
+        }
+
+        // 根据喜欢状态设置显示文本
+        const appleMusicFavText = track.is_apple_music_fav ? "是" : "否";
+        const lastFmFavText = track.is_last_fm_fav ? "是" : "否";
+
+        modalContent.innerHTML = `
+          <div class="modal-header">
+            <h2>${track.track}</h2>
+            <span class="close" onclick="hideModal('trackDetailsModal')">×</span>
+          </div>
+          <div class="modal-body">
+            <div class="track-info">
+              <p><strong>艺术家:</strong> ${track.artist}</p>
+              <p><strong>专辑:</strong> ${track.album}</p>
+              <p><strong>播放次数:</strong> ${track.play_count}</p>
+              ${track.duration ? `<p><strong>时长:</strong> ${formatDuration(track.duration)}</p>` : ''}
+              ${track.track_number ? `<p><strong>曲目编号:</strong> ${track.track_number}</p>` : ''}
+              ${track.genre ? `<p><strong>流派:</strong> ${track.genre}</p>` : ''}
+              ${track.composer ? `<p><strong>作曲家:</strong> ${track.composer}</p>` : ''}
+              ${track.release_date ? `<p><strong>发行日期:</strong> ${track.release_date}</p>` : ''}
+              ${track.music_brainz_id ? `<p><strong>MusicBrainz ID:</strong> ${track.music_brainz_id}</p>` : ''}
+              <p><strong>喜欢苹果音乐:</strong> ${appleMusicFavText}</p>
+              <p><strong>喜欢Last.fm:</strong> ${lastFmFavText}</p>
+              <p><strong>数据来源:</strong> <span class="play-source ${sourceClass}">${sourceText}</span></p>
+              ${track.bundle_id ? `<p><strong>应用标识符:</strong> ${track.bundle_id}</p>` : ''}
+              ${track.unique_id ? `<p><strong>唯一标识符:</strong> ${track.unique_id}</p>` : ''}
+              <p><strong>创建时间:</strong> ${new Date(track.created_at).toLocaleString('zh-CN')}</p>
+              <p><strong>更新时间:</strong> ${new Date(track.updated_at).toLocaleString('zh-CN')}</p>
+            </div>
+          </div>
+        `;
+      }
+    </script>
+    
+    <!-- 曲目详情模态框 -->
+    <div id="trackDetailsModal" class="modal">
+      <div class="modal-content">
+        <!-- 内容将通过JavaScript动态填充 -->
+      </div>
+    </div>
+  </body>
+</html>

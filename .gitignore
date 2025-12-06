@@ -17,3 +17,5 @@ scripts/migrate_photos.go
 .agent/
 *test.go
 *.json
+*.wrangler/
+/web/lastfm-scrobbler/functions/
