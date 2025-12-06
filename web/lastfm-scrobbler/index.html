@@ -3412,55 +3412,10 @@
         // 清除之前的定时器
         dashboardUpdater.clearAllTimers();
 
-        // 设置定时器，每5秒刷新一次各个组件
-        dashboardUpdater.addTimer(createAutoUpdater(initStats, 60000)); // 每60秒更新统计卡片
-        dashboardUpdater.addTimer(createAutoUpdater(initSourceChart, 60000)); // 每60秒更新播放来源扇形图
-        dashboardUpdater.addTimer(
-          createAutoUpdater(
-            () =>
-              initTrendChart(
-                document
-                  .querySelector(".time-filter.active[data-range]")
-                  .getAttribute("data-range") || 30
-              ),
-            60000
-          )
-        ); // 每60秒更新趋势图
-        dashboardUpdater.addTimer(
-          createAutoUpdater(
-            () =>
-              initArtistChart(
-                document
-                  .querySelector(".time-filter.active[data-type]")
-                  .getAttribute("data-type") || "plays"
-              ),
-            60000
-          )
-        ); // 每60秒更新艺术家图表
-        dashboardUpdater.addTimer(
-          createAutoUpdater(
-            () =>
-              initAlbumChart(
-                document
-                  .querySelector(".time-filter.active[data-days]")
-                  .getAttribute("data-days") || 30
-              ),
-            60000
-          )
-        ); // 每60秒更新专辑图表
-        dashboardUpdater.addTimer(createAutoUpdater(initGenreChart, 60000)); // 每60秒更新流派图表
-        dashboardUpdater.addTimer(
-          createAutoUpdater(
-            () =>
-              initRanking(
-                document
-                  .querySelector(".time-filter.active[data-ranking]")
-                  .getAttribute("data-ranking") || "all"
-              ),
-            60000
-          )
-        ); // 每60秒更新排行榜
-        dashboardUpdater.addTimer(createAutoUpdater(refreshRecentPlays, 60000)); // 每60秒更新最近播放列表
+        // 设置定时器，但根据用户需求，暂时禁用自动刷新，改为手动刷新页面
+        // dashboardUpdater.addTimer(createAutoUpdater(initStats, 60000)); 
+		// ... auto update logic removed
+
 
         // 添加时间过滤器点击事件
         document.querySelectorAll(".time-filter").forEach((filter) => {
