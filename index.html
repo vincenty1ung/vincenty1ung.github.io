@@ -141,6 +141,9 @@
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 padding-bottom: 100px; /* Ensure enough space at bottom */
+                /* Ensure container is above fixed background overlay (z-index: 1) */
+                position: relative; 
+                z-index: 2;
             }
 
             /* Fix background video position so it doesn't scroll */
@@ -179,7 +182,11 @@
             }
 
             #main_content h1 {
-                font-size: 24px;
+                font-size: 8vw; /* Use vw units for better scaling, max ~30px */
+                max-width: 100%;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
                 line-height: 1.2;
                 margin-bottom: 15px;
             }
@@ -345,16 +352,16 @@
     <section id="main_content">
         <div id="head">
             <h1>VINCENT CHYU'S BLOG</h1>
-            <p class="info">代码如人生,追求逻辑的完美闭环</p>
+            <p class="info">Code mirrors life, striving for the perfect logical loop</p>
             <br>
             <p class="info"></p>
-            <p class="sub_head">📷 用镜头捕捉光影,用代码构建工具,用契约精神对待每一次承诺</p><br>
-            <p class="sub_head">🎸 摇滚是态度,爵士是自由,另类音乐是拒绝平庸的宣言</p><br>
-            <p class="sub_head">🏃 徒步、长跑、健身、羽毛球、滑板、就差没有把全部的运动都写上了🤦‍♂️</p><br>
-            <p class="sub_head">💻 这里有摄影作品集,开发者工具箱,和一颗理性而热爱生活的灵魂</p><br>
-            <p class="sub_head">🎯 信奉:逻辑严密,闭环思维,说到做到,热爱折腾</p>
+            <p class="sub_head">📷 Capturing light through the lens, building tools with code, honoring every commitment with integrity</p><br>
+            <p class="sub_head">🎸 Rock is attitude, Jazz is freedom, Alternative is a manifesto against mediocrity</p><br>
+            <p class="sub_head">🏃 Hiking, Running, Gym, Badminton, Skateboarding... nearly every sport imaginable 🤦‍♂️</p><br>
+            <p class="sub_head">💻 Featuring a photography portfolio, developer tools, and a rational soul passionate about life</p><br>
+            <p class="sub_head">🎯 Values: Rigorous logic, closed-loop thinking, walking the talk, and endless tinkering</p>
             <br>
-            <p class="sub_head">欢迎来到我的数字世界</p>
+            <p class="sub_head">Welcome to my digital world</p>
             <p class="info"><span id="sitetime"></span></p>
             <p class="info">since 2019</p>
         </div>
