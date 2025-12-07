@@ -136,9 +136,29 @@
 
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
+            /* Enable scrolling */
+            #container {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Fix background video position so it doesn't scroll */
+            #background_video {
+                position: fixed;
+                z-index: 0;
+            }
+
+            /* Adjust main content layout */
             #main_content {
                 width: 90%;
                 max-width: 90%;
+                /* Reset centering */
+                position: relative;
+                top: auto;
+                transform: none;
+                margin: 80px auto 40px;
+                display: block;
+                height: auto;
             }
 
             #main_content h1 {
@@ -168,6 +188,14 @@
                 margin-right: 0;
                 padding: 8px 15px;
                 font-size: 11px;
+            }
+
+            /* Adjust footer */
+            #footer {
+                position: relative;
+                bottom: auto;
+                margin-bottom: 40px;
+                width: 100%;
             }
             
             /* Hide manual controls on mobile since we enabled autoplay */
@@ -271,7 +299,7 @@
     } catch (e) {
     }</script>
 </head>
-<body style="overflow:scroll;overflow-y:hidden">
+<body style="overflow:hidden">
 <div id="container">
     <video id="background_video" loop muted playsinline></video>
     <div id="video_cover"></div>
