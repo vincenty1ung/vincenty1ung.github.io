@@ -55,10 +55,10 @@
       // self.videoEl.readyState === 4 (HAVE_ENOUGH_DATA)
       self.videoEl.addEventListener('canplay', function () {
         // Play the video when enough has been buffered
-        if (!self.opt.isMobile) {
+        // if (!self.opt.isMobile) {
           self.opt.onLoad && self.opt.onLoad();
           if (self.opt.autoplay !== false) self.videoEl.play();
-        }
+        // }
       });
 
       // If resizing is required (resize video as window/container resizes)

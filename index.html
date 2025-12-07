@@ -134,6 +134,48 @@
             }
         }
 
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            #main_content {
+                width: 90%;
+                max-width: 90%;
+            }
+
+            #main_content h1 {
+                font-size: 24px;
+                line-height: 1.2;
+                margin-bottom: 15px;
+            }
+
+            #main_content .sub_head {
+                font-size: 14px;
+                line-height: 1.4;
+            }
+
+            #main_content .info {
+                font-size: 11px;
+            }
+
+            #links {
+                margin-top: 30px;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            #links a {
+                margin-right: 0;
+                padding: 8px 15px;
+                font-size: 11px;
+            }
+            
+            /* Hide manual controls on mobile since we enabled autoplay */
+            #video_controls {
+                display: none;
+            }
+        }
+
         /* Demo page specific styles */
 
         body {
@@ -231,7 +273,7 @@
 </head>
 <body style="overflow:scroll;overflow-y:hidden">
 <div id="container">
-    <video id="background_video" loop muted></video>
+    <video id="background_video" loop muted playsinline></video>
     <div id="video_cover"></div>
     <div id="overlay"></div>
 
