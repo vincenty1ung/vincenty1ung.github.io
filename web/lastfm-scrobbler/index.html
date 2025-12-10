@@ -1128,7 +1128,7 @@
       <!-- 顶部导航栏 -->
       <nav class="navbar">
         <div class="navbar-content">
-          <a href="./" class="logo">音乐统计系统</a>
+          <a href="./" class="logo">收听习惯及偏好分布</a>
           <ul class="nav-links">
             <li><a href="./" class="active">仪表板</a></li>
             <li><a href="#" id="unscrobbledTab">未上报</a></li>
@@ -1350,16 +1350,16 @@
         } else {
           body.classList.remove("dark-mode");
         }
-
-        // 重新加载所有图表以适应主题模式
-        reloadAllCharts();
       }
 
       // 监听系统主题变化
       function watchSystemThemeChange() {
         if (window.matchMedia) {
           const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-          mediaQuery.addEventListener("change", toggleDarkModeBasedOnSystem);
+          mediaQuery.addEventListener("change", function() {
+            toggleDarkModeBasedOnSystem();
+            reloadAllCharts();
+          });
         }
       }
 
@@ -3466,7 +3466,7 @@
         initSourceChart(); // 初始化播放来源扇形图
         initTrendChart(30); // 默认加载30天数据
         initArtistChart("plays"); // 默认按播放次数排序
-        initAlbumChart(30); // 默认加载30天数据
+        initAlbumChart(7); // 默认加载30天数据
         initGenreChart(); // 初始化热门流派图表
         initRanking("all"); // 默认总排行
         initRecentPlays(); // 初始化最近播放列表
