@@ -1081,11 +1081,7 @@ async function loadGallery() {
                                 // Only update URL if:
                                 // 1. Not initializing from URL parameter (isInitializingFromUrl flag)
                                 // This prevents URL from being updated during initialization when fromIndex might be undefined
-                                if (
-                                    !isInitializingFromUrl
-                                ) {
-                                    updateUrlQuery(toIndex);
-                                }
+                                updateUrlQuery(index);
 
                                 try {
                                     const existingPanel = fancybox.container.querySelector(
