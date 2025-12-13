@@ -510,14 +510,53 @@ function openFancyboxDirectly(photoIndex, galleryItems) {
                         console.error("Failed to update metadata panel:", e);
                     }
                 },
-                reveal: (fancybox, slide) => {
-                    // When initializing from URL, clear the flag when the correct slide is revealed
+                reveal: (fancybox, slide) => { 
+                  // When initializing from URL, clear the flag when the correct slide is revealed
                     if (isInitializingFromUrl && slide.index === photoIndex) {
                         // Small delay to ensure everything is ready
                         setTimeout(() => {
                             updateUrlQuery(photoIndex);
                             isInitializingFromUrl = false;
                         }, 100);
+                    }
+                    // Keep reveal for the initial open, as change might have fired before DOM was ready?
+                    // Or just to be safe.
+
+                    const current = fancybox.getSlide();
+
+                    // 只处理当前正在显示的 slide
+                    if (slide.index !== current.index) return;
+
+                    
+
+                    console.log("openFancyboxDirectly reveal: 当前显示:", slide.filename);
+                    const exif = slide.exif;
+                    const filename = slide.filename;
+                    if (!exif) return;
+
+                    const index = slide.index;
+                    const total = fancybox.carousel.slides.length;
+                    console.log("openFancyboxDirectly reveal: 当前索引:", index);
+                    console.log("openFancyboxDirectly reveal: 显示:", `${index + 1} / ${total}`);
+
+                    try {
+                        const existingPanel = fancybox.container.querySelector(
+                            ".fancybox__metadata"
+                        );
+                        if (existingPanel) {
+                            console.log("existingPanel.remove()");
+                            existingPanel.remove();
+                        }
+
+                        if (exif) {
+                            const metadataPanel = createMetadataPanel(
+                                exif,
+                                filename
+                            );
+                            fancybox.container.appendChild(metadataPanel);
+                        }
+                    } catch (e) {
+                        console.error("Failed to update metadata panel:", e);
                     }
                 },
             },
